@@ -8,6 +8,8 @@ import com.revrobotics.spark.config.SparkMaxConfig;
 
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 
 import static frc.robot.Constants.IoConstants.*;
 import frc.robot.Constants.IoConstants.IoCanIdGroup;
@@ -74,9 +76,29 @@ public class IoSubsystem extends SubsystemBase {
     return commandSpeeds(PREPARING_IO_VOLTAGE, INTAKING_INTAKE_OUTPUT, PREPARING_LOADER_OUTPUT);
   }
 
-  /** Launch fuel toward the target. */
+  /**
+   * Launch fuel toward the target.
+   *
+   * <p>Behavior:
+   * <ol>
+   *   <li>Spin up flywheel (CAN 9) for 0.5 s with no feeding.</li>
+   *   <li>Then continue spinning flywheel and run the loader (CAN 19) in the
+   *       launch direction, while the command is held.</li>
+   * </ol>
+   * The floor intake motor does not run while launching.
+   */
   public Command commandLaunch() {
-    return commandSpeeds(LAUNCHING_IO_VOLTAGE, INTAKING_INTAKE_OUTPUT, LAUNCHING_LOADER_OUTPUT);
+    Command spinUp =
+        runEnd(
+            () -> setSpeeds(LAUNCHING_IO_VOLTAGE, 0.0, 0.0),
+            this::stop);
+
+    Command feed =
+        runEnd(
+            () -> setSpeeds(LAUNCHING_IO_VOLTAGE, 0.0, LAUNCHING_LOADER_OUTPUT),
+            this::stop);
+
+    return Commands.sequence(spinUp.withTimeout(0.5), feed);
   }
 
   /** Eject fuel back out the intake. */
