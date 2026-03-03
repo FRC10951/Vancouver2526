@@ -36,9 +36,11 @@ public final class Constants {
     public static final int INTAKE_MOTOR_CURRENT_LIMIT = 60;
     public static final int LOADER_MOTOR_CURRENT_LIMIT = 60;
 
+    /** IO flywheel voltage when intaking from the floor/storage. */
     public static final double INTAKING_IO_VOLTAGE = -12;
-    /** Loader duty cycle (0–1) for intaking. */
+    /** Intake motor voltage when intaking. */
     public static final double INTAKING_INTAKE_OUTPUT = -6;
+    /** Loader duty cycle (0–1) when intaking. */
     public static final double INTAKING_LOADER_OUTPUT = 10.0 / 12.0;
 
     public static final double PREPARING_IO_VOLTAGE = -6;
@@ -47,6 +49,27 @@ public final class Constants {
     public static final double LAUNCHING_IO_VOLTAGE = 12;
     /** Loader duty cycle (0–1) for launching at fixed speed. */
     public static final double LAUNCHING_LOADER_OUTPUT = 10.0 / 12.0;
+
+    /**
+     * Logical grouping of CAN IDs for the IO / intake / loader motors. This
+     * allows subsystems to accept a single argument instead of three separate
+     * IDs, keeping wiring changes localized.
+     */
+    public static final class IoCanIdGroup {
+      public final int ioMotorId;
+      public final int intakeMotorId;
+      public final int loaderMotorId;
+
+      public IoCanIdGroup(int ioMotorId, int intakeMotorId, int loaderMotorId) {
+        this.ioMotorId = ioMotorId;
+        this.intakeMotorId = intakeMotorId;
+        this.loaderMotorId = loaderMotorId;
+      }
+    }
+
+    /** Default CAN ID group for the production robot. */
+    public static final IoCanIdGroup IO_CAN_IDS =
+        new IoCanIdGroup(IO_MOTOR_ID, INTAKE_MOTOR_ID, LOADER_MOTOR_ID);
   }
 
   public static final class OperatorConstants {
@@ -54,6 +77,16 @@ public final class Constants {
     public static final int OPERATOR_CONTROLLER_PORT = 1;
     public static final double DRIVE_SCALING = 0.7;
     public static final double ROTATION_SCALING = 0.8;
+    /**
+     * Deadband for driver sticks (arcade drive). Values with absolute magnitude
+     * below this are treated as zero to reduce drift.
+     */
+    public static final double DRIVE_DEADBAND = 0.08;
+    /**
+     * Threshold for treating a trigger as "pressed" for command bindings. This
+     * keeps the behavior consistent across LT/RT usages.
+     */
+    public static final double TRIGGER_THRESHOLD = 0.5;
   }
 
   /**

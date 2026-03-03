@@ -6,6 +6,7 @@ package frc.robot.commands;
 
 import static frc.robot.Constants.OperatorConstants.*;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.subsystems.CANDriveSubsystem;
@@ -33,8 +34,14 @@ public class Drive extends Command {
 
   @Override
   public void execute() {
-    double xSpeed = -controller.getLeftY() * DRIVE_SCALING;
-    double zRotation = controller.getRightX() * ROTATION_SCALING;
+    // Apply deadbands to reduce drift from imperfectly centered sticks.
+    double forwardBack =
+        MathUtil.applyDeadband(-controller.getLeftY(), DRIVE_DEADBAND) * DRIVE_SCALING;
+    double rotation =
+        MathUtil.applyDeadband(controller.getRightX(), DRIVE_DEADBAND) * ROTATION_SCALING;
+
+    double xSpeed = forwardBack;
+    double zRotation = rotation;
     driveSubsystem.driveArcade(xSpeed, zRotation);
   }
 

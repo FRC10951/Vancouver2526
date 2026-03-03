@@ -10,28 +10,36 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import static frc.robot.Constants.IoConstants.*;
+import frc.robot.Constants.IoConstants.IoCanIdGroup;
 
 /**
  * Fuel system: IO motor (CAN 9), intake (CAN 12), and loader (CAN 19), all
  * brushless SPARK MAX.
  */
 public class IoSubsystem extends SubsystemBase {
+  private final IoCanIdGroup canIds;
   private final SparkMax ioMotor;
   private final SparkMax intakeMotor;
   private final SparkMax loaderMotor;
 
   public IoSubsystem() {
-    ioMotor = new SparkMax(IO_MOTOR_ID, MotorType.kBrushless);
+    this(IO_CAN_IDS);
+  }
+
+  public IoSubsystem(IoCanIdGroup canIds) {
+    this.canIds = canIds;
+
+    ioMotor = new SparkMax(canIds.ioMotorId, MotorType.kBrushless);
     SparkMaxConfig ioConfig = new SparkMaxConfig();
     ioConfig.smartCurrentLimit(IO_MOTOR_CURRENT_LIMIT);
     ioMotor.configure(ioConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
-    intakeMotor = new SparkMax(INTAKE_MOTOR_ID, MotorType.kBrushless);
+    intakeMotor = new SparkMax(canIds.intakeMotorId, MotorType.kBrushless);
     SparkMaxConfig intakeConfig = new SparkMaxConfig();
     intakeConfig.smartCurrentLimit(INTAKE_MOTOR_CURRENT_LIMIT);
     intakeMotor.configure(intakeConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
-    loaderMotor = new SparkMax(LOADER_MOTOR_ID, MotorType.kBrushless);
+    loaderMotor = new SparkMax(canIds.loaderMotorId, MotorType.kBrushless);
     SparkMaxConfig loaderConfig = new SparkMaxConfig();
     loaderConfig.smartCurrentLimit(LOADER_MOTOR_CURRENT_LIMIT);
     loaderMotor.configure(loaderConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);

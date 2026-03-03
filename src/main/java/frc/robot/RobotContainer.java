@@ -67,8 +67,8 @@ public class RobotContainer {
     driveSubsystem.setDefaultCommand(new Drive(driveSubsystem, driverController));
     ioSubsystem.setDefaultCommand(ioSubsystem.commandStop());
 
-    driverController.leftTrigger(0.5).whileTrue(ioSubsystem.commandIntake());
-    driverController.rightTrigger(0.5).whileTrue(ioSubsystem.commandLaunch());
+    driverController.leftTrigger(TRIGGER_THRESHOLD).whileTrue(ioSubsystem.commandIntake());
+    driverController.rightTrigger(TRIGGER_THRESHOLD).whileTrue(ioSubsystem.commandLaunch());
     driverController.b().onTrue(driveSubsystem.runOnce(driveSubsystem::resetEncoders));
   }
 
