@@ -1,3 +1,5 @@
+<!-- Zakhar are you going to do code urself or naw -->
+
 # KitBot 2026 Robot Code
 
 WPILib command-based robot code for the **2026 KitBot** (FRC). This robot has:
