@@ -8,7 +8,6 @@ import com.revrobotics.spark.config.SparkMaxConfig;
 
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 
 import static frc.robot.Constants.IoConstants.*;
@@ -47,7 +46,7 @@ public class IoSubsystem extends SubsystemBase {
     loaderMotor.configure(loaderConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
   }
 
-  /** Set IO motor by voltage and loader by duty cycle (0–1). */
+  /** Set IO, intake, and loader speeds (voltage, voltage, duty cycle). */
   public void setSpeeds(double ioVoltage, double intakeOutput, double loaderOutput) {
     ioMotor.setVoltage(ioVoltage);
     intakeMotor.setVoltage(intakeOutput);
@@ -66,14 +65,16 @@ public class IoSubsystem extends SubsystemBase {
     return startEnd(() -> setSpeeds(ioVoltage, intakeOutput, loaderOutput), this::stop);
   }
 
-  /** Intake from floor/storage into the robot. */
+  /** Intake from floor/storage into the robot (shooter off). */
   public Command commandIntake() {
-    return commandSpeeds(INTAKING_IO_VOLTAGE, INTAKING_INTAKE_OUTPUT, INTAKING_LOADER_OUTPUT);
+    // Only floor intake (CAN 12) and hopper/loader (CAN 19) run while intaking.
+    return commandSpeeds(0.0, INTAKING_INTAKE_OUTPUT, INTAKING_LOADER_OUTPUT);
   }
 
-  /** Spin up / prepare without fully launching (optional helper). */
+  /** Spin up / prepare shooter without fully launching (optional helper). */
   public Command commandPrepare() {
-    return commandSpeeds(PREPARING_IO_VOLTAGE, INTAKING_INTAKE_OUTPUT, PREPARING_LOADER_OUTPUT);
+    // Shooter only, no intake or loader.
+    return commandSpeeds(PREPARING_IO_VOLTAGE, 0.0, PREPARING_LOADER_OUTPUT);
   }
 
   /**
