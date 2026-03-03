@@ -41,14 +41,14 @@ public final class Constants {
     /** Intake motor voltage when intaking. */
     public static final double INTAKING_INTAKE_OUTPUT = -6;
     /** Loader duty cycle (0–1) when intaking. */
-    public static final double INTAKING_LOADER_OUTPUT = 10.0 / 12.0;
+    public static final double INTAKING_LOADER_OUTPUT = 6.0 / 12.0;
 
     public static final double PREPARING_IO_VOLTAGE = -6;
     public static final double PREPARING_LOADER_OUTPUT = 0.0;
 
     public static final double LAUNCHING_IO_VOLTAGE = 12;
-    /** Loader duty cycle (0–1) for launching at fixed speed. */
-    public static final double LAUNCHING_LOADER_OUTPUT = 10.0 / 12.0;
+    /** Loader duty cycle (0–1) for launching at fixed speed (opposite direction of intake). */
+    public static final double LAUNCHING_LOADER_OUTPUT = -INTAKING_LOADER_OUTPUT;
 
     /**
      * Logical grouping of CAN IDs for the IO / intake / loader motors. This
