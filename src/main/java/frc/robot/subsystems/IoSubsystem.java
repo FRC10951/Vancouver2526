@@ -68,7 +68,8 @@ public class IoSubsystem extends SubsystemBase {
   /** Intake from floor/storage into the robot (shooter off). */
   public Command commandIntake() {
     // Only floor intake (CAN 12) and hopper/loader (CAN 19) run while intaking.
-    return commandSpeeds(0.0, INTAKING_INTAKE_OUTPUT, INTAKING_LOADER_OUTPUT);
+    // Use the loader direction that moves balls from floor toward the hopper.
+    return commandSpeeds(0.0, INTAKING_INTAKE_OUTPUT, -INTAKING_LOADER_OUTPUT);
   }
 
   /** Spin up / prepare shooter without fully launching (optional helper). */
@@ -96,7 +97,9 @@ public class IoSubsystem extends SubsystemBase {
 
     Command feed =
         runEnd(
-            () -> setSpeeds(LAUNCHING_IO_VOLTAGE, 0.0, LAUNCHING_LOADER_OUTPUT),
+            // Use the opposite loader direction from intake to move balls
+            // from hopper into the flywheel.
+            () -> setSpeeds(LAUNCHING_IO_VOLTAGE, 0.0, INTAKING_LOADER_OUTPUT),
             this::stop);
 
     return Commands.sequence(spinUp.withTimeout(0.5), feed);
@@ -105,5 +108,12 @@ public class IoSubsystem extends SubsystemBase {
   /** Eject fuel back out the intake. */
   public Command commandEject() {
     return commandSpeeds(-INTAKING_IO_VOLTAGE, -INTAKING_INTAKE_OUTPUT, -INTAKING_LOADER_OUTPUT);
+  }
+
+  /** Toggleable flywheel-only command (CAN 9 on/off). */
+  public Command commandFlywheelToggle() {
+    return runEnd(
+        () -> ioMotor.setVoltage(LAUNCHING_IO_VOLTAGE),
+        () -> ioMotor.setVoltage(0.0));
   }
 }
