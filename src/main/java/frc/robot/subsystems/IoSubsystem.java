@@ -46,7 +46,7 @@ public class IoSubsystem extends SubsystemBase {
     loaderMotor.configure(loaderConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
   }
 
-  /** Set IO, intake, and loader speeds (voltage, voltage, duty cycle). */
+  /** Set IO and intake motors by voltage and loader by duty cycle (0–1). */
   public void setSpeeds(double ioVoltage, double intakeOutput, double loaderOutput) {
     ioMotor.setVoltage(ioVoltage);
     intakeMotor.setVoltage(intakeOutput);
@@ -65,7 +65,16 @@ public class IoSubsystem extends SubsystemBase {
     return startEnd(() -> setSpeeds(ioVoltage, intakeOutput, loaderOutput), this::stop);
   }
 
-  /** Intake from floor/storage into the robot (shooter off). */
+  /**
+   * Intake from floor/storage into the robot.
+   *
+   * <p>
+   * Behavior:
+   * - IO flywheel (CAN 9) is OFF.
+   * - Intake motor (CAN 12) pulls fuel in.
+   * - Loader (CAN 19) runs opposite the launch direction to move fuel toward the
+   * intake.
+   */
   public Command commandIntake() {
     // Only floor intake (CAN 12) and hopper/loader (CAN 19) run while intaking.
     // Use the loader direction that moves balls from floor toward the hopper.
@@ -81,31 +90,31 @@ public class IoSubsystem extends SubsystemBase {
   /**
    * Launch fuel toward the target.
    *
-   * <p>Behavior:
+   * <p>
+   * Behavior:
    * <ol>
-   *   <li>Spin up flywheel (CAN 9) for 0.5 s with no feeding.</li>
-   *   <li>Then continue spinning flywheel and run the loader (CAN 19) in the
-   *       launch direction, while the command is held.</li>
+   * <li>Spin up flywheel (CAN 9) for 0.5 s with no feeding.</li>
+   * <li>Then continue spinning flywheel and run the loader (CAN 19) in the
+   * launch direction, while the command is held.</li>
    * </ol>
    * The floor intake motor does not run while launching.
    */
   public Command commandLaunch() {
-    Command spinUp =
-        runEnd(
-            () -> setSpeeds(LAUNCHING_IO_VOLTAGE, 0.0, 0.0),
-            this::stop);
+    Command spinUp = runEnd(
+        () -> setSpeeds(LAUNCHING_IO_VOLTAGE, 0.0, 0.0),
+        this::stop);
 
-    Command feed =
-        runEnd(
-            // Use the opposite loader direction from intake to move balls
-            // from hopper into the flywheel.
-            () -> setSpeeds(LAUNCHING_IO_VOLTAGE, 0.0, INTAKING_LOADER_OUTPUT),
-            this::stop);
+    Command feed = runEnd(
+        () -> setSpeeds(LAUNCHING_IO_VOLTAGE, 0.0, LAUNCHING_LOADER_OUTPUT),
+        this::stop);
 
     return Commands.sequence(spinUp.withTimeout(0.5), feed);
   }
 
-  /** Eject fuel back out the intake. */
+  /**
+   * Eject fuel back out the intake (reverse of intake preset, including
+   * flywheel).
+   */
   public Command commandEject() {
     return commandSpeeds(-INTAKING_IO_VOLTAGE, -INTAKING_INTAKE_OUTPUT, -INTAKING_LOADER_OUTPUT);
   }
