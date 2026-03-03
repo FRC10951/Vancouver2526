@@ -52,7 +52,7 @@ At startup, the robot prints a CAN ID list to the console and publishes it to Sm
 | 12 | **Intake motor** | `IoConstants.INTAKE_MOTOR_ID` | Pulls fuel from floor or storage. **Anti-clockwise = intake; clockwise = spit out.** Used by `IoSubsystem` for intake/launch/eject presets. |
 | 19 | Loader / directional wheel | `IoConstants.LOADER_MOTOR_ID` | Used by `IoSubsystem` for intake and launch (duty cycle 0–1). |
 
-- `IoSubsystem` creates **three** SPARK MAX controllers: **9** (IO motor), **12** (intake), and **19** (loader). All are **brushless** as configured in the subsystem.
+- `IoSubsystem` creates **three** SPARK MAX controllers: **9** (IO motor, brushless), **12** (intake, brushed), and **19** (loader, brushed).
 
 ---
 
