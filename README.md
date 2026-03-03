@@ -21,8 +21,8 @@ Arcade drive runs by default, with deadband applied to both sticks. Triggers con
 |--------|----------|
 | **Left stick (Y)** | Drive forward/back (arcade). Scaling from `OperatorConstants.DRIVE_SCALING`. |
 | **Right stick (X)** | Rotate left/right (arcade). Scaling from `OperatorConstants.ROTATION_SCALING`. |
-| **LT** (Left trigger) | **Intake** — hold to run `IoSubsystem.commandIntake()` (IO motor 9 + loader 19 pull fuel in). |
-| **RT** (Right trigger) | **Launch** — hold to run `IoSubsystem.commandLaunch()` (IO motor 9 + loader 19 launch). |
+| **LT** (Left trigger) | **Intake** — hold to run `IoSubsystem.commandIntake()` (intake motor 12 + loader 19 pull fuel in; flywheel 9 is off). |
+| **RT** (Right trigger) | **Launch** — hold to run `IoSubsystem.commandLaunch()` (flywheel 9 + loader 19 feed from hopper to shooter). |
 | **B** | **Reset encoders** — resets drivetrain encoders on `CANDriveSubsystem`. |
 
 There is no operator controller in use; only the driver controller has bindings. Other fuel commands exist in code (`commandEject`, `commandPrepare`, `commandStop`) but are not bound to buttons.

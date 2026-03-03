@@ -8,7 +8,6 @@ import com.revrobotics.spark.config.SparkMaxConfig;
 
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 
 import static frc.robot.Constants.IoConstants.*;
@@ -47,7 +46,7 @@ public class IoSubsystem extends SubsystemBase {
     loaderMotor.configure(loaderConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
   }
 
-  /** Set IO motor by voltage and loader by duty cycle (0–1). */
+  /** Set IO and intake motors by voltage and loader by duty cycle (0–1). */
   public void setSpeeds(double ioVoltage, double intakeOutput, double loaderOutput) {
     ioMotor.setVoltage(ioVoltage);
     intakeMotor.setVoltage(intakeOutput);
@@ -66,7 +65,14 @@ public class IoSubsystem extends SubsystemBase {
     return startEnd(() -> setSpeeds(ioVoltage, intakeOutput, loaderOutput), this::stop);
   }
 
-  /** Intake from floor/storage into the robot. */
+  /**
+   * Intake from floor/storage into the robot.
+   *
+   * <p>Behavior:
+   * - IO flywheel (CAN 9) is OFF.
+   * - Intake motor (CAN 12) pulls fuel in.
+   * - Loader (CAN 19) runs opposite the launch direction to move fuel toward the intake.
+   */
   public Command commandIntake() {
     return commandSpeeds(INTAKING_IO_VOLTAGE, INTAKING_INTAKE_OUTPUT, INTAKING_LOADER_OUTPUT);
   }
@@ -101,7 +107,7 @@ public class IoSubsystem extends SubsystemBase {
     return Commands.sequence(spinUp.withTimeout(0.5), feed);
   }
 
-  /** Eject fuel back out the intake. */
+  /** Eject fuel back out the intake (reverse of intake preset, including flywheel). */
   public Command commandEject() {
     return commandSpeeds(-INTAKING_IO_VOLTAGE, -INTAKING_INTAKE_OUTPUT, -INTAKING_LOADER_OUTPUT);
   }
