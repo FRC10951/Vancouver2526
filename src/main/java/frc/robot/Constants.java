@@ -5,7 +5,8 @@
 package frc.robot;
 
 /**
- * Robot-wide constants: CAN IDs, current limits, voltages, and operator scaling.
+ * Robot-wide constants: CAN IDs, current limits, voltages, and operator
+ * scaling.
  * See README.md for hardware mapping and behavior.
  */
 public final class Constants {
@@ -24,15 +25,20 @@ public final class Constants {
 
   public static final class IoConstants {
     public static final int IO_MOTOR_ID = 9;
-    /** Intake (12) – pulls fuel from floor/storage. Anti-clockwise = intake; clockwise = spit out. */
+    /**
+     * Intake (12) – pulls fuel from floor/storage. Anti-clockwise = intake;
+     * clockwise = spit out.
+     */
     public static final int INTAKE_MOTOR_ID = 12;
     public static final int LOADER_MOTOR_ID = 19;
 
     public static final int IO_MOTOR_CURRENT_LIMIT = 60;
+    public static final int INTAKE_MOTOR_CURRENT_LIMIT = 60;
     public static final int LOADER_MOTOR_CURRENT_LIMIT = 60;
 
     public static final double INTAKING_IO_VOLTAGE = -12;
     /** Loader duty cycle (0–1) for intaking. */
+    public static final double INTAKING_INTAKE_OUTPUT = -6;
     public static final double INTAKING_LOADER_OUTPUT = 10.0 / 12.0;
 
     public static final double PREPARING_IO_VOLTAGE = -6;
@@ -66,7 +72,6 @@ public final class Constants {
         "  IO motor:     " + IoConstants.IO_MOTOR_ID,
         "  Intake motor: " + IoConstants.INTAKE_MOTOR_ID,
         "  Loader motor: " + IoConstants.LOADER_MOTOR_ID,
-        "============================="
-    );
+        "=============================");
   }
 }
