@@ -16,31 +16,18 @@ import frc.robot.subsystems.CANDriveSubsystem;
 import frc.robot.subsystems.IoSubsystem;
 
 /**
- * This class is where the bulk of the robot should be declared. Since
- * Command-based is a "declarative" paradigm, very little robot logic should
- * actually be handled in the {@link Robot} periodic methods (other than the
- * scheduler calls). Instead, the structure of the robot (including subsystems,
- * commands, and trigger mappings) should be declared here.
+ * Robot container: subsystems, driver/operator controllers, button bindings,
+ * and autonomous chooser. See README.md for control layout and CAN IDs.
  */
 public class RobotContainer {
-  // The robot's subsystems
   private final CANDriveSubsystem driveSubsystem = new CANDriveSubsystem();
   private final IoSubsystem ioSubsystem = new IoSubsystem();
-
-  // The driver's controller
-  private final CommandXboxController driverController = new CommandXboxController(
-      DRIVER_CONTROLLER_PORT);
-
-  // The operator's controller
-  private final CommandXboxController operatorController = new CommandXboxController(
-      OPERATOR_CONTROLLER_PORT);
-
-  // The autonomous chooser
+  private final CommandXboxController driverController =
+      new CommandXboxController(DRIVER_CONTROLLER_PORT);
+  private final CommandXboxController operatorController =
+      new CommandXboxController(OPERATOR_CONTROLLER_PORT);
   private final SendableChooser<Command> autoChooser = new SendableChooser<>();
 
-  /**
-   * The container for the robot. Contains subsystems, OI devices, and commands.
-   */
   public RobotContainer() {
     configureBindings();
 
@@ -77,26 +64,15 @@ public class RobotContainer {
   }
 
   private void configureBindings() {
-    // Default commands: drive runs continuously; IO stays stopped until LT/RT are
-    // held.
     driveSubsystem.setDefaultCommand(new Drive(driveSubsystem, driverController));
     ioSubsystem.setDefaultCommand(ioSubsystem.commandStop());
 
-    // --- DRIVER: drive subsystem only (sticks + B). IO only via LT/RT. ---
-    // LT = intake only (IO). RT = shoot only (IO). One trigger, one system.
     driverController.leftTrigger(0.5).whileTrue(ioSubsystem.commandIntake());
     driverController.rightTrigger(0.5).whileTrue(ioSubsystem.commandLaunch());
-
-    // B = drive only (reset encoders)
-    driverController.b()
-        .onTrue(driveSubsystem.runOnce(() -> driveSubsystem.resetEncoders()));
+    driverController.b().onTrue(driveSubsystem.runOnce(driveSubsystem::resetEncoders));
   }
 
-  /**
-   * Use this to pass the autonomous command to the main {@link Robot} class.
-   *
-   * @return the command to run in autonomous
-   */
+  /** Returns the autonomous command selected on the dashboard. */
   public Command getAutonomousCommand() {
     return autoChooser.getSelected();
   }

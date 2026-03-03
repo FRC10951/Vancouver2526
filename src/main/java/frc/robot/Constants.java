@@ -5,44 +5,32 @@
 package frc.robot;
 
 /**
- * The Constants class provides a convenient place for teams to hold robot-wide
- * numerical or boolean constants. This class should not be used for any other
- * purpose. All constants should be declared globally (i.e. public static). Do
- * not put anything functional in this class.
- *
- * <p>
- * It is advised to statically import this class (or one of its inner classes)
- * wherever the constants are needed, to reduce verbosity.
+ * Robot-wide constants: CAN IDs, current limits, voltages, and operator scaling.
+ * See README.md for hardware mapping and behavior.
  */
 public final class Constants {
   public static final class DriveConstants {
-    // Motor controller IDs for drivetrain motors
     public static final int LEFT_LEADER_ID = 11;
     public static final int LEFT_FOLLOWER_ID = 8;
     public static final int RIGHT_LEADER_ID = 10;
     public static final int RIGHT_FOLLOWER_ID = 7;
 
-    // Current limit for drivetrain motors. 60A is a reasonable maximum to reduce
-    // likelihood of tripping breakers or damaging CIM motors
     public static final int DRIVE_MOTOR_CURRENT_LIMIT = 60;
-
-    // Physical geometry — measure for your robot
-    /** Wheel diameter in meters (e.g. 6 inches ≈ 0.1524 m). */
+    /** Wheel diameter in meters (e.g. 6 in ≈ 0.1524 m). */
     public static final double WHEEL_DIAMETER_METERS = 0.1524;
-    /** Gear ratio from motor to wheel (e.g. 10.71 for standard KitBot gearbox). */
+    /** Gear ratio motor-to-wheel (e.g. 10.71 for KitBot). */
     public static final double GEAR_RATIO = 10.71;
   }
 
   public static final class IoConstants {
     public static final int IO_MOTOR_ID = 9;
-    // public static final int SOMETHING_MOTOR_ID = 12;
+    /** Intake (12) – pulls fuel from floor/storage. Anti-clockwise = intake; clockwise = spit out. */
+    public static final int INTAKE_MOTOR_ID = 12;
     public static final int LOADER_MOTOR_ID = 19;
 
     public static final int IO_MOTOR_CURRENT_LIMIT = 60;
     public static final int LOADER_MOTOR_CURRENT_LIMIT = 60;
 
-    // IO motor: voltage (V). Loader: duty cycle 0–1 (use setVoltage/set
-    // respectively).
     public static final double INTAKING_IO_VOLTAGE = -12;
     /** Loader duty cycle (0–1) for intaking. */
     public static final double INTAKING_LOADER_OUTPUT = 10.0 / 12.0;
@@ -56,13 +44,29 @@ public final class Constants {
   }
 
   public static final class OperatorConstants {
-    // Port constants for driver and operator controllers. These should match the
-    // values in the Joystick tab of the Driver Station software
     public static final int DRIVER_CONTROLLER_PORT = 0;
     public static final int OPERATOR_CONTROLLER_PORT = 1;
-
-    // Scaling multipliers applied to joystick inputs to keep driving manageable
     public static final double DRIVE_SCALING = 0.7;
     public static final double ROTATION_SCALING = 0.8;
+  }
+
+  /**
+   * Returns a formatted list of all CAN IDs for logging or display.
+   */
+  public static String getCanIdsList() {
+    return String.join("\n",
+        "========== CAN IDs ==========",
+        "Drivetrain:",
+        "  Left  leader:  " + DriveConstants.LEFT_LEADER_ID,
+        "  Left  follower: " + DriveConstants.LEFT_FOLLOWER_ID,
+        "  Right leader:  " + DriveConstants.RIGHT_LEADER_ID,
+        "  Right follower: " + DriveConstants.RIGHT_FOLLOWER_ID,
+        "",
+        "IO / Loader:",
+        "  IO motor:     " + IoConstants.IO_MOTOR_ID,
+        "  Intake motor: " + IoConstants.INTAKE_MOTOR_ID,
+        "  Loader motor: " + IoConstants.LOADER_MOTOR_ID,
+        "============================="
+    );
   }
 }

@@ -185,4 +185,6 @@ compile_commands.json
 
 # Eclipse generated file for annotation processors
 .factorypath
-Downloads/
+
+# Third-party tools (e.g. ripgrep) not part of robot code
+ripgrep-*/

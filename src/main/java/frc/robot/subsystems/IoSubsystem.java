@@ -12,8 +12,8 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import static frc.robot.Constants.IoConstants.*;
 
 /**
- * Handles intaking and launching fuel using two SPARK MAX controllers:
- * one for the main IO motor and one for the loader.
+ * Fuel system: IO motor (CAN 9) and loader (CAN 19), both brushed SPARK MAX.
+ * Intake motor (CAN 12) is in {@link frc.robot.Constants.IoConstants}; add here when wired.
  */
 public class IoSubsystem extends SubsystemBase {
   private final SparkMax ioMotor;
