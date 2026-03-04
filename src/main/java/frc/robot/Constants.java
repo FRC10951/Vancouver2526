@@ -38,18 +38,18 @@ public final class Constants {
 
     /** IO flywheel voltage when intaking from the floor/storage (off). */
     public static final double INTAKING_IO_VOLTAGE = 0.0;
-    /** Intake motor voltage when intaking. */
-    public static final double INTAKING_INTAKE_OUTPUT = 6.0;
-    /** Loader duty cycle (0–1) when intaking (opposite of launch direction). */
-    public static final double INTAKING_LOADER_OUTPUT = -6.0 / 12.0;
+    /** Intake motor voltage when intaking (full power). */
+    public static final double INTAKING_INTAKE_OUTPUT = 12.0;
+    /** Loader duty cycle (0–1) when intaking (full power, opposite of launch direction). */
+    public static final double INTAKING_LOADER_OUTPUT = -1.0;
 
     public static final double PREPARING_IO_VOLTAGE = -6;
     public static final double PREPARING_LOADER_OUTPUT = 0.0;
 
-    /** IO flywheel voltage when launching toward the target. */
+    /** IO flywheel voltage when launching toward the target (full power). */
     public static final double LAUNCHING_IO_VOLTAGE = 12.0;
-    /** Loader duty cycle (0–1) for launching at fixed speed. */
-    public static final double LAUNCHING_LOADER_OUTPUT = 6.0 / 12.0;
+    /** Loader duty cycle (0–1) for launching at fixed speed (full power). */
+    public static final double LAUNCHING_LOADER_OUTPUT = 1.0;
 
     /**
      * Logical grouping of CAN IDs for the IO / intake / loader motors. This

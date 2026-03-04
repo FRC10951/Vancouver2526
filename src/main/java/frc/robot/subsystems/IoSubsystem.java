@@ -60,17 +60,18 @@ public class IoSubsystem extends SubsystemBase {
   public IoSubsystem(IoCanIdGroup canIds) {
     this.canIds = canIds;
 
+    // Flywheel (CAN 9) is brushless; intake/loader are brushed.
     ioMotor = new SparkMax(canIds.ioMotorId, MotorType.kBrushless);
     SparkMaxConfig ioConfig = new SparkMaxConfig();
     ioConfig.smartCurrentLimit(IO_MOTOR_CURRENT_LIMIT);
     ioMotor.configure(ioConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
-    intakeMotor = new SparkMax(canIds.intakeMotorId, MotorType.kBrushless);
+    intakeMotor = new SparkMax(canIds.intakeMotorId, MotorType.kBrushed);
     SparkMaxConfig intakeConfig = new SparkMaxConfig();
     intakeConfig.smartCurrentLimit(INTAKE_MOTOR_CURRENT_LIMIT);
     intakeMotor.configure(intakeConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
-    loaderMotor = new SparkMax(canIds.loaderMotorId, MotorType.kBrushless);
+    loaderMotor = new SparkMax(canIds.loaderMotorId, MotorType.kBrushed);
     SparkMaxConfig loaderConfig = new SparkMaxConfig();
     loaderConfig.smartCurrentLimit(LOADER_MOTOR_CURRENT_LIMIT);
     loaderMotor.configure(loaderConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
