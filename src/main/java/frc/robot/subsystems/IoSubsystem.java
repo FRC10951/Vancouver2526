@@ -1,5 +1,7 @@
 package frc.robot.subsystems;
 
+import java.io.FileWriter;
+
 import com.revrobotics.PersistMode;
 import com.revrobotics.ResetMode;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
@@ -22,6 +24,34 @@ public class IoSubsystem extends SubsystemBase {
   private final SparkMax ioMotor;
   private final SparkMax intakeMotor;
   private final SparkMax loaderMotor;
+
+  // #region agent log
+  private static void agentDebugLog(
+      String location,
+      String message,
+      String hypothesisId,
+      double ioVoltage,
+      double intakeOutput,
+      double loaderOutput) {
+    try (FileWriter fw = new FileWriter("c:\\Users\\SSIS\\Downloads\\Vancouver2526\\.cursor\\debug.log", true)) {
+      long ts = System.currentTimeMillis();
+      String safeMessage = message.replace("\"", "\\\"");
+      String json = String.format(
+          "{\"id\":\"log_%d\",\"timestamp\":%d,\"runId\":\"initial\",\"hypothesisId\":\"%s\",\"location\":\"%s\",\"message\":\"%s\",\"data\":{\"ioVoltage\":%.3f,\"intakeOutput\":%.3f,\"loaderOutput\":%.3f}}\n",
+          ts,
+          ts,
+          hypothesisId,
+          location,
+          safeMessage,
+          ioVoltage,
+          intakeOutput,
+          loaderOutput);
+      fw.write(json);
+    } catch (Exception e) {
+      // swallow any logging errors
+    }
+  }
+  // #endregion
 
   public IoSubsystem() {
     this(IO_CAN_IDS);
@@ -48,6 +78,13 @@ public class IoSubsystem extends SubsystemBase {
 
   /** Set IO and intake motors by voltage and loader by duty cycle (0–1). */
   public void setSpeeds(double ioVoltage, double intakeOutput, double loaderOutput) {
+    agentDebugLog(
+        "IoSubsystem.java:50",
+        "setSpeeds invoked",
+        "A",
+        ioVoltage,
+        intakeOutput,
+        loaderOutput);
     ioMotor.setVoltage(ioVoltage);
     intakeMotor.setVoltage(intakeOutput);
     loaderMotor.set(loaderOutput);
