@@ -142,4 +142,6 @@ Returns a formatted string of all CAN IDs (drivetrain + IO, intake, loader). Cal
 - **Deploy:** Use WPILib deploy; driver Xbox on **USB port 0**.
 - Use the dashboard auto chooser to pick an autonomous before enabling.
 
-Hello world!
+## Simulation
+
+To run the robot in simulation (no hardware) with the WPILib Sim GUI and Driver Station, see **[SIMULATION.md](SIMULATION.md)**. You can use **WPILib: Simulate Robot Code** from the command palette, then enable the robot in the Driver Station and connect SmartDashboard/Shuffleboard to **127.0.0.1** to view live data.

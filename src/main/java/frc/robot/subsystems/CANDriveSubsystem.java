@@ -7,12 +7,19 @@ package frc.robot.subsystems;
 import com.revrobotics.PersistMode;
 import com.revrobotics.ResetMode;
 import com.revrobotics.RelativeEncoder;
+import com.revrobotics.sim.SparkRelativeEncoderSim;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
+import edu.wpi.first.wpilibj.RobotBase;
+import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.simulation.DifferentialDrivetrainSim;
+import edu.wpi.first.wpilibj.simulation.DifferentialDrivetrainSim.KitbotGearing;
+import edu.wpi.first.wpilibj.simulation.DifferentialDrivetrainSim.KitbotMotor;
+import edu.wpi.first.wpilibj.simulation.DifferentialDrivetrainSim.KitbotWheelSize;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import static frc.robot.Constants.DriveConstants.*;
 
@@ -38,6 +45,11 @@ public class CANDriveSubsystem extends SubsystemBase {
 
   private static final double METERS_PER_ROTATION =
       (Math.PI * WHEEL_DIAMETER_METERS) / GEAR_RATIO;
+
+  // --- Simulation (only used when RobotBase.isSimulation()) ---
+  private DifferentialDrivetrainSim m_driveSim;
+  private SparkRelativeEncoderSim m_leftEncoderSim;
+  private SparkRelativeEncoderSim m_rightEncoderSim;
 
   public CANDriveSubsystem() {
     // Create brushed motors for a KitBot-style CIM drivetrain
@@ -79,6 +91,17 @@ public class CANDriveSubsystem extends SubsystemBase {
     // Built-in encoders
     leftEncoder  = leftLeader.getEncoder();
     rightEncoder = rightLeader.getEncoder();
+
+    // Simulation: KitBot-style drivetrain (dual CIM per side, 10.71:1, 6" wheels)
+    if (RobotBase.isSimulation()) {
+      m_driveSim = DifferentialDrivetrainSim.createKitbotSim(
+          KitbotMotor.kDualCIMPerSide,
+          KitbotGearing.k10p71,
+          KitbotWheelSize.kSixInch,
+          null);
+      m_leftEncoderSim = new SparkRelativeEncoderSim(leftLeader);
+      m_rightEncoderSim = new SparkRelativeEncoderSim(rightLeader);
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -92,6 +115,29 @@ public class CANDriveSubsystem extends SubsystemBase {
     SmartDashboard.putNumber("Right Distance (m)",   getRightDistanceMeters());
     SmartDashboard.putNumber("Left Velocity (m/s)",  getLeftVelocityMetersPerSecond());
     SmartDashboard.putNumber("Right Velocity (m/s)", getRightVelocityMetersPerSecond());
+  }
+
+  @Override
+  public void simulationPeriodic() {
+    if (m_driveSim == null) {
+      return;
+    }
+    double batteryVolts = RobotController.getInputVoltage();
+    // Left leader is inverted in hardware config, so negate for sim (positive = forward).
+    double leftVolts = -leftLeader.getAppliedOutput() * batteryVolts;
+    double rightVolts = rightLeader.getAppliedOutput() * batteryVolts;
+    m_driveSim.setInputs(leftVolts, rightVolts);
+    m_driveSim.update(0.02);
+
+    // Push sim state into encoder sim (position in rotations, velocity in RPM).
+    double leftPosM = m_driveSim.getLeftPositionMeters();
+    double rightPosM = m_driveSim.getRightPositionMeters();
+    double leftVelMS = m_driveSim.getLeftVelocityMetersPerSecond();
+    double rightVelMS = m_driveSim.getRightVelocityMetersPerSecond();
+    m_leftEncoderSim.setPosition(leftPosM / METERS_PER_ROTATION);
+    m_leftEncoderSim.setVelocity(leftVelMS / METERS_PER_ROTATION * 60.0);
+    m_rightEncoderSim.setPosition(rightPosM / METERS_PER_ROTATION);
+    m_rightEncoderSim.setVelocity(rightVelMS / METERS_PER_ROTATION * 60.0);
   }
 
   // ---------------------------------------------------------------------------
