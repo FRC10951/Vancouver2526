@@ -73,6 +73,7 @@ public class RobotContainer {
     driverController.leftTrigger(TRIGGER_THRESHOLD).whileTrue(ioSubsystem.commandIntake());
     driverController.rightTrigger(TRIGGER_THRESHOLD).whileTrue(ioSubsystem.commandLaunch());
     driverController.leftBumper().whileTrue(ioSubsystem.commandEject());
+    driverController.x().toggleOnTrue(ioSubsystem.commandIoSpinUp50());
     driverController.b().onTrue(driveSubsystem.runOnce(driveSubsystem::resetEncoders));
   }
 

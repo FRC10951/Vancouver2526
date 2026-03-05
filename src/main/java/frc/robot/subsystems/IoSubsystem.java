@@ -66,10 +66,11 @@ public class IoSubsystem extends SubsystemBase {
     return startEnd(() -> setSpeeds(ioVoltage, intakeOutput, loaderOutput), this::stop);
   }
 
-  /** Intake from floor/storage into the robot. */
+  /** Intake from floor/storage into the robot. IO spins up first, then intake/loader. */
   public Command commandIntake() {
-    return commandSpeeds(INTAKING_IO_VOLTAGE, INTAKING_INTAKE_OUTPUT, INTAKING_LOADER_OUTPUT)
-        .withTimeout(LAUNCH_SPIN_UP_SECONDS);
+    return Commands.sequence(
+        commandSpeeds(INTAKING_IO_VOLTAGE, 0, 0).withTimeout(INTAKE_SPIN_UP_SECONDS),
+        commandSpeeds(INTAKING_IO_VOLTAGE, INTAKING_INTAKE_OUTPUT, INTAKING_LOADER_OUTPUT));
   }
 
   /** Spin up / prepare without fully launching (optional helper). */
@@ -77,17 +78,18 @@ public class IoSubsystem extends SubsystemBase {
     return commandSpeeds(PREPARING_IO_VOLTAGE, INTAKING_INTAKE_OUTPUT, PREPARING_LOADER_OUTPUT);
   }
 
-  /**
-   * Launch fuel toward the target. Spins up flywheel first, then feeds loader.
-   */
+  /** Launch fuel toward the target (no spin-up delay). */
   public Command commandLaunch() {
-    return Commands.sequence(
-        commandSpeeds(LAUNCHING_IO_VOLTAGE, 0, 0).withTimeout(LAUNCH_SPIN_UP_SECONDS),
-        commandSpeeds(LAUNCHING_IO_VOLTAGE, INTAKING_INTAKE_OUTPUT, LAUNCHING_LOADER_OUTPUT));
+    return commandSpeeds(LAUNCHING_IO_VOLTAGE, INTAKING_INTAKE_OUTPUT, LAUNCHING_LOADER_OUTPUT);
   }
 
-  /** Eject fuel back out the intake. */
+  /** Eject fuel back out the intake. IO motor off; only intake and loader run. */
   public Command commandEject() {
-    return commandSpeeds(-INTAKING_IO_VOLTAGE, -INTAKING_INTAKE_OUTPUT, -INTAKING_LOADER_OUTPUT);
+    return commandSpeeds(0, -INTAKING_INTAKE_OUTPUT, -INTAKING_LOADER_OUTPUT);
+  }
+
+  /** IO motor only at 50% (for X button toggle). */
+  public Command commandIoSpinUp50() {
+    return commandSpeeds(IO_SPIN_UP_50_VOLTAGE, 0, 0);
   }
 }

@@ -59,6 +59,14 @@ public final class Constants {
 
     /** Delay (seconds) to spin up flywheel before feeding loader when launching. */
     public static final double LAUNCH_SPIN_UP_SECONDS = 0.5;
+    /**
+     * Delay (seconds) to spin up IO flywheel before intake/loader when intaking.
+     */
+    public static final double INTAKE_SPIN_UP_SECONDS = 0.5;
+    /**
+     * IO motor voltage for "spin up 50%" toggle (X button). 50% of typical 12 V.
+     */
+    public static final double IO_SPIN_UP_50_VOLTAGE = 6.0;
 
     /**
      * Logical grouping of CAN IDs for the IO / intake / loader motors. This
