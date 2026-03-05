@@ -19,8 +19,10 @@ import static frc.robot.Constants.DriveConstants.*;
 /**
  * Tank (differential) drive subsystem using CAN SparkMax controllers.
  *
- * <p>Supports both tank drive (independent left/right sticks) and arcade drive
- * (forward + rotation), making it easy to switch control styles in {@code Drive.java}.
+ * <p>
+ * Supports both tank drive (independent left/right sticks) and arcade drive
+ * (forward + rotation), making it easy to switch control styles in
+ * {@code Drive.java}.
  */
 public class CANDriveSubsystem extends SubsystemBase {
 
@@ -36,14 +38,13 @@ public class CANDriveSubsystem extends SubsystemBase {
   private final RelativeEncoder leftEncoder;
   private final RelativeEncoder rightEncoder;
 
-  private static final double METERS_PER_ROTATION =
-      (Math.PI * WHEEL_DIAMETER_METERS) / GEAR_RATIO;
+  private static final double METERS_PER_ROTATION = (Math.PI * WHEEL_DIAMETER_METERS) / GEAR_RATIO;
 
   public CANDriveSubsystem() {
     // Create brushed motors for a KitBot-style CIM drivetrain
-    leftLeader   = new SparkMax(LEFT_LEADER_ID,   MotorType.kBrushed);
-    leftFollower  = new SparkMax(LEFT_FOLLOWER_ID,  MotorType.kBrushed);
-    rightLeader  = new SparkMax(RIGHT_LEADER_ID,  MotorType.kBrushed);
+    leftLeader = new SparkMax(LEFT_LEADER_ID, MotorType.kBrushed);
+    leftFollower = new SparkMax(LEFT_FOLLOWER_ID, MotorType.kBrushed);
+    rightLeader = new SparkMax(RIGHT_LEADER_ID, MotorType.kBrushed);
     rightFollower = new SparkMax(RIGHT_FOLLOWER_ID, MotorType.kBrushed);
 
     drive = new DifferentialDrive(leftLeader, rightLeader);
@@ -77,7 +78,7 @@ public class CANDriveSubsystem extends SubsystemBase {
     rightFollower.configure(rightFollowerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
     // Built-in encoders
-    leftEncoder  = leftLeader.getEncoder();
+    leftEncoder = leftLeader.getEncoder();
     rightEncoder = rightLeader.getEncoder();
   }
 
@@ -88,9 +89,9 @@ public class CANDriveSubsystem extends SubsystemBase {
   @Override
   public void periodic() {
     // Publish useful diagnostics to SmartDashboard
-    SmartDashboard.putNumber("Left Distance (m)",    getLeftDistanceMeters());
-    SmartDashboard.putNumber("Right Distance (m)",   getRightDistanceMeters());
-    SmartDashboard.putNumber("Left Velocity (m/s)",  getLeftVelocityMetersPerSecond());
+    SmartDashboard.putNumber("Left Distance (m)", getLeftDistanceMeters());
+    SmartDashboard.putNumber("Right Distance (m)", getRightDistanceMeters());
+    SmartDashboard.putNumber("Left Velocity (m/s)", getLeftVelocityMetersPerSecond());
     SmartDashboard.putNumber("Right Velocity (m/s)", getRightVelocityMetersPerSecond());
   }
 
@@ -102,7 +103,7 @@ public class CANDriveSubsystem extends SubsystemBase {
    * Tank drive: each side is controlled independently.
    * Positive values drive each side forward.
    *
-   * @param leftSpeed  Speed for the left side  [-1, 1]
+   * @param leftSpeed  Speed for the left side [-1, 1]
    * @param rightSpeed Speed for the right side [-1, 1]
    */
   public void driveTank(double leftSpeed, double rightSpeed) {
@@ -113,7 +114,7 @@ public class CANDriveSubsystem extends SubsystemBase {
    * Arcade drive: one stick for forward/backward, one for rotation.
    *
    * @param xSpeed    Forward/backward speed [-1, 1]
-   * @param zRotation Rotation rate          [-1, 1]
+   * @param zRotation Rotation rate [-1, 1]
    */
   public void driveArcade(double xSpeed, double zRotation) {
     drive.arcadeDrive(xSpeed, zRotation);
@@ -123,7 +124,7 @@ public class CANDriveSubsystem extends SubsystemBase {
    * Sets raw voltage on each side of the drivetrain.
    * Useful for autonomous routines that need precise distance control.
    *
-   * @param leftVolts  Voltage for the left side  [-12, 12]
+   * @param leftVolts  Voltage for the left side [-12, 12]
    * @param rightVolts Voltage for the right side [-12, 12]
    */
   public void driveVolts(double leftVolts, double rightVolts) {
@@ -143,9 +144,10 @@ public class CANDriveSubsystem extends SubsystemBase {
 
   /**
    * Returns the distance traveled by the left side in meters.
+   * Negated so that forward motion (left motor inverted) gives positive distance.
    */
   public double getLeftDistanceMeters() {
-    return leftEncoder.getPosition() * METERS_PER_ROTATION;
+    return -leftEncoder.getPosition() * METERS_PER_ROTATION;
   }
 
   /**
@@ -165,13 +167,14 @@ public class CANDriveSubsystem extends SubsystemBase {
 
   /**
    * Returns left-side velocity in meters per second.
+   * Negated so that forward motion gives positive velocity.
    */
   public double getLeftVelocityMetersPerSecond() {
-    return (leftEncoder.getVelocity() / 60.0) * METERS_PER_ROTATION;
+    return -(leftEncoder.getVelocity() / 60.0) * METERS_PER_ROTATION;
   }
 
   /**
-   * Returns right-side velocity in meters per second.
+   * Returns right-side kvelocity in meters per second.
    */
   public double getRightVelocityMetersPerSecond() {
     return (rightEncoder.getVelocity() / 60.0) * METERS_PER_ROTATION;

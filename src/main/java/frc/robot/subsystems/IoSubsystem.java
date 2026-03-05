@@ -7,13 +7,15 @@ import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import static frc.robot.Constants.IoConstants.*;
 import frc.robot.Constants.IoConstants.IoCanIdGroup;
 
 /**
- * Fuel system: IO motor (CAN 9), intake (CAN 12), and loader (CAN 19), all
+ * Fuel system: IO motor, intake, and loader (CAN IDs from
+ * Constants.IoConstants), all
  * brushless SPARK MAX.
  */
 public class IoSubsystem extends SubsystemBase {
@@ -66,7 +68,8 @@ public class IoSubsystem extends SubsystemBase {
 
   /** Intake from floor/storage into the robot. */
   public Command commandIntake() {
-    return commandSpeeds(INTAKING_IO_VOLTAGE, INTAKING_INTAKE_OUTPUT, INTAKING_LOADER_OUTPUT);
+    return commandSpeeds(INTAKING_IO_VOLTAGE, INTAKING_INTAKE_OUTPUT, INTAKING_LOADER_OUTPUT)
+        .withTimeout(LAUNCH_SPIN_UP_SECONDS);
   }
 
   /** Spin up / prepare without fully launching (optional helper). */
@@ -74,9 +77,13 @@ public class IoSubsystem extends SubsystemBase {
     return commandSpeeds(PREPARING_IO_VOLTAGE, INTAKING_INTAKE_OUTPUT, PREPARING_LOADER_OUTPUT);
   }
 
-  /** Launch fuel toward the target. */
+  /**
+   * Launch fuel toward the target. Spins up flywheel first, then feeds loader.
+   */
   public Command commandLaunch() {
-    return commandSpeeds(LAUNCHING_IO_VOLTAGE, INTAKING_INTAKE_OUTPUT, LAUNCHING_LOADER_OUTPUT);
+    return Commands.sequence(
+        commandSpeeds(LAUNCHING_IO_VOLTAGE, 0, 0).withTimeout(LAUNCH_SPIN_UP_SECONDS),
+        commandSpeeds(LAUNCHING_IO_VOLTAGE, INTAKING_INTAKE_OUTPUT, LAUNCHING_LOADER_OUTPUT));
   }
 
   /** Eject fuel back out the intake. */

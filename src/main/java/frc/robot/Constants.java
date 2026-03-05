@@ -37,18 +37,28 @@ public final class Constants {
     public static final int LOADER_MOTOR_CURRENT_LIMIT = 60;
 
     /** IO flywheel voltage when intaking from the floor/storage. */
-    public static final double INTAKING_IO_VOLTAGE = -12;
+    public static final double INTAKING_IO_VOLTAGE = 12;
     /** Intake motor voltage when intaking. */
-    public static final double INTAKING_INTAKE_OUTPUT = -6;
+    public static final double INTAKING_INTAKE_OUTPUT = -10;
     /** Loader duty cycle (0–1) when intaking. */
     public static final double INTAKING_LOADER_OUTPUT = 6.0 / 12.0;
 
     public static final double PREPARING_IO_VOLTAGE = -6;
     public static final double PREPARING_LOADER_OUTPUT = 0.0;
 
-    public static final double LAUNCHING_IO_VOLTAGE = 12;
-    /** Loader duty cycle (0–1) for launching at fixed speed (opposite direction of intake). */
+    /**
+     * Flywheel (IO) voltage during launch; spin-up phase uses this before feeding
+     * loader.
+     */
+    public static final double LAUNCHING_IO_VOLTAGE = 0;
+    /**
+     * Loader duty cycle (0–1) for launching at fixed speed (opposite direction of
+     * intake).
+     */
     public static final double LAUNCHING_LOADER_OUTPUT = -INTAKING_LOADER_OUTPUT;
+
+    /** Delay (seconds) to spin up flywheel before feeding loader when launching. */
+    public static final double LAUNCH_SPIN_UP_SECONDS = 0.5;
 
     /**
      * Logical grouping of CAN IDs for the IO / intake / loader motors. This
@@ -68,8 +78,27 @@ public final class Constants {
     }
 
     /** Default CAN ID group for the production robot. */
-    public static final IoCanIdGroup IO_CAN_IDS =
-        new IoCanIdGroup(IO_MOTOR_ID, INTAKE_MOTOR_ID, LOADER_MOTOR_ID);
+    public static final IoCanIdGroup IO_CAN_IDS = new IoCanIdGroup(IO_MOTOR_ID, INTAKE_MOTOR_ID, LOADER_MOTOR_ID);
+  }
+
+  /**
+   * Autonomous constants based on FRC 2026 REBUILT field.
+   * Field: 317.7 in × 651.2 in. Center line bisects the 651.2 in length.
+   * HUB is 158.6 in (~4.03 m) from each alliance wall → center to HUB ≈ 167 in
+   * (4.24 m).
+   * We drive from center toward our HUB and stop at estimated shooting range (~2
+   * m in front of HUB).
+   */
+  public static final class AutoConstants {
+    /**
+     * Drive distance from center line to shooting position (meters). Tune for your
+     * shooter range.
+     */
+    public static final double CENTER_TO_SHOOT_DRIVE_METERS = 2.25;
+    /** Forward speed for center-to-shoot drive [0, 1]. */
+    public static final double CENTER_TO_SHOOT_SPEED = 0.6;
+    /** How long to run the launcher to shoot preload (seconds). */
+    public static final double CENTER_TO_SHOOT_LAUNCH_SECONDS = 3.0;
   }
 
   public static final class OperatorConstants {

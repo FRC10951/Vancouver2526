@@ -11,7 +11,9 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import static frc.robot.Constants.OperatorConstants.*;
 
 import frc.robot.commands.AutoDrive;
+import frc.robot.commands.AutoDriveDistance;
 import frc.robot.commands.Drive;
+import static frc.robot.Constants.AutoConstants.*;
 import frc.robot.subsystems.CANDriveSubsystem;
 import frc.robot.subsystems.IoSubsystem;
 
@@ -32,6 +34,7 @@ public class RobotContainer {
     configureBindings();
 
     autoChooser.setDefaultOption("Do Nothing", Commands.none());
+    autoChooser.addOption("Center → Drive & Shoot", centerDriveAndShootCommand());
     autoChooser.addOption("Drive Forward 2s", new AutoDrive(driveSubsystem, 0.5, 0.0).withTimeout(2.0));
 
     autoChooser.addOption("(test) turn left 2s",
@@ -69,7 +72,18 @@ public class RobotContainer {
 
     driverController.leftTrigger(TRIGGER_THRESHOLD).whileTrue(ioSubsystem.commandIntake());
     driverController.rightTrigger(TRIGGER_THRESHOLD).whileTrue(ioSubsystem.commandLaunch());
+    driverController.leftBumper().whileTrue(ioSubsystem.commandEject());
     driverController.b().onTrue(driveSubsystem.runOnce(driveSubsystem::resetEncoders));
+  }
+
+  /**
+   * Autonomous: start at center, drive toward our HUB to shooting range, then launch into HUB.
+   * Assumes robot is facing the alliance HUB. Tune CENTER_TO_SHOOT_DRIVE_METERS for your shooter.
+   */
+  private Command centerDriveAndShootCommand() {
+    return new AutoDriveDistance(driveSubsystem, CENTER_TO_SHOOT_DRIVE_METERS, CENTER_TO_SHOOT_SPEED)
+        .andThen(ioSubsystem.commandLaunch().withTimeout(CENTER_TO_SHOOT_LAUNCH_SECONDS))
+        .andThen(Commands.none());
   }
 
   /** Returns the autonomous command selected on the dashboard. */
