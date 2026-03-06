@@ -83,9 +83,9 @@ public class IoSubsystem extends SubsystemBase {
     return commandSpeeds(LAUNCHING_IO_VOLTAGE, INTAKING_INTAKE_OUTPUT, LAUNCHING_LOADER_OUTPUT);
   }
 
-  /** Eject fuel back out the intake. IO motor off; only intake and loader run. */
+  /** Eject: IO off; intake and loader run in reverse. */
   public Command commandEject() {
-    return commandSpeeds(0, -INTAKING_INTAKE_OUTPUT, -INTAKING_LOADER_OUTPUT);
+    return commandSpeeds(0, -INTAKING_INTAKE_OUTPUT, INTAKING_LOADER_OUTPUT);
   }
 
   /** IO motor only at 50% (for X button toggle). */

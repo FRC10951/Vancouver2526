@@ -38,7 +38,7 @@ public class Drive extends Command {
     double forwardBack =
         MathUtil.applyDeadband(-controller.getLeftY(), DRIVE_DEADBAND) * DRIVE_SCALING;
     double rotation =
-        MathUtil.applyDeadband(controller.getRightX(), DRIVE_DEADBAND) * ROTATION_SCALING;
+        MathUtil.applyDeadband(-controller.getRightX(), DRIVE_DEADBAND) * ROTATION_SCALING;
 
     double xSpeed = forwardBack;
     double zRotation = rotation;
