@@ -31,13 +31,13 @@ public final class Constants {
      */
     public static final int INTAKE_MOTOR_ID = 12;
     public static final int LOADER_MOTOR_ID = 19;
-
+    // intake variable swaped with lanch variable
     public static final int IO_MOTOR_CURRENT_LIMIT = 60;
     public static final int INTAKE_MOTOR_CURRENT_LIMIT = 60;
     public static final int LOADER_MOTOR_CURRENT_LIMIT = 60;
 
     /** IO flywheel voltage when intaking from the floor/storage. */
-    public static final double INTAKING_IO_VOLTAGE = 12;
+    public static final double INTAKING_IO_VOLTAGE = 6;
     /** Intake motor voltage when intaking. */
     public static final double INTAKING_INTAKE_OUTPUT = -10;
     /** Loader duty cycle (0–1) when intaking. */
@@ -58,15 +58,15 @@ public final class Constants {
     public static final double LAUNCHING_LOADER_OUTPUT = -INTAKING_LOADER_OUTPUT;
 
     /** Delay (seconds) to spin up flywheel before feeding loader when launching. */
-    public static final double LAUNCH_SPIN_UP_SECONDS = 0.5;
+    public static final double LAUNCH_SPIN_UP_SECONDS = 1.0;
     /**
      * Delay (seconds) to spin up IO flywheel before intake/loader when intaking.
      */
-    public static final double INTAKE_SPIN_UP_SECONDS = 0.5;
+    public static final double INTAKE_SPIN_UP_SECONDS = 1.5;
     /**
      * IO motor voltage for "spin up 50%" toggle (X button). 50% of typical 12 V.
      */
-    public static final double IO_SPIN_UP_50_VOLTAGE = 6.0;
+    public static final double IO_SPIN_UP_50_VOLTAGE = 8.0;
 
     /**
      * Logical grouping of CAN IDs for the IO / intake / loader motors. This
@@ -107,13 +107,27 @@ public final class Constants {
     public static final double CENTER_TO_SHOOT_SPEED = 0.6;
     /** How long to run the launcher to shoot preload (seconds). */
     public static final double CENTER_TO_SHOOT_LAUNCH_SECONDS = 3.0;
+
+    /** Basic auto: shoot duration (seconds). */
+    public static final double BASIC_SHOOT_SECONDS = 3.0;
+    /**
+     * Basic auto: turn 30° starboard (right) — rotation rate [0, 1]. Positive =
+     * right.
+     */
+    public static final double TURN_30_STARBOARD_SPEED = 0.35;
+    /** Basic auto: time (seconds) to turn ~30° starboard. Tune to match robot. */
+    public static final double TURN_30_STARBOARD_SECONDS = 1.2;
+    /** Basic auto: drive forward while intaking — duration (seconds). */
+    public static final double DRIVE_AND_INTAKE_SECONDS = 3.0;
+    /** Basic auto: forward speed [0, 1] during drive-and-intake. */
+    public static final double DRIVE_AND_INTAKE_SPEED = 0.5;
   }
 
   public static final class OperatorConstants {
     public static final int DRIVER_CONTROLLER_PORT = 0;
     public static final int OPERATOR_CONTROLLER_PORT = 1;
-    public static final double DRIVE_SCALING = 0.7;
-    public static final double ROTATION_SCALING = 0.8;
+    public static final double DRIVE_SCALING = 1.0;
+    public static final double ROTATION_SCALING = 1.0;
     /**
      * Deadband for driver sticks (arcade drive). Values with absolute magnitude
      * below this are treated as zero to reduce drift.

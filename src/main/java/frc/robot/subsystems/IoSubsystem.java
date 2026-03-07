@@ -21,6 +21,8 @@ import frc.robot.Constants.IoConstants.IoCanIdGroup;
 public class IoSubsystem extends SubsystemBase {
   private final IoCanIdGroup canIds;
   private final SparkMax ioMotor;
+  /** When true, idle state runs IO at 50% (survives intake/launch). */
+  private boolean spinUp50Requested = false;
   private final SparkMax intakeMotor;
   private final SparkMax loaderMotor;
 
@@ -62,15 +64,37 @@ public class IoSubsystem extends SubsystemBase {
     return runOnce(this::stop);
   }
 
+  /** Toggle the "spin 50% when idle" state (X button). Survives intake/launch. */
+  public void toggleSpinUp50Requested() {
+    spinUp50Requested = !spinUp50Requested;
+  }
+
+  /** Default command: when no other command runs, apply spin-50 or stop. */
+  public Command commandIdle() {
+    return run(this::applyIdleState);
+  }
+
+  private void applyIdleState() {
+    if (spinUp50Requested) {
+      setSpeeds(IO_SPIN_UP_50_VOLTAGE, 0, 0);
+    } else {
+      stop();
+    }
+  }
+
   public Command commandSpeeds(double ioVoltage, double intakeOutput, double loaderOutput) {
     return startEnd(() -> setSpeeds(ioVoltage, intakeOutput, loaderOutput), this::stop);
   }
 
-  /** Intake from floor/storage into the robot. IO spins up first, then intake/loader. */
+  /**
+   * Intake from floor/storage into the robot. IO spins up first, then
+   * intake/loader.
+   */
   public Command commandIntake() {
     return Commands.sequence(
         commandSpeeds(INTAKING_IO_VOLTAGE, 0, 0).withTimeout(INTAKE_SPIN_UP_SECONDS),
         commandSpeeds(INTAKING_IO_VOLTAGE, INTAKING_INTAKE_OUTPUT, INTAKING_LOADER_OUTPUT));
+
   }
 
   /** Spin up / prepare without fully launching (optional helper). */
@@ -91,5 +115,14 @@ public class IoSubsystem extends SubsystemBase {
   /** IO motor only at 50% (for X button toggle). */
   public Command commandIoSpinUp50() {
     return commandSpeeds(IO_SPIN_UP_50_VOLTAGE, 0, 0);
+  }
+
+  public Command commandMaxSpin() {
+    return commandSpeeds(12, 0, 0);
+  }
+
+  /** Reverse flywheel and run loader (Y button). */
+  public Command commandReverseFlywheelAndLoader() {
+    return commandSpeeds(-INTAKING_IO_VOLTAGE, 0, INTAKING_LOADER_OUTPUT);
   }
 }

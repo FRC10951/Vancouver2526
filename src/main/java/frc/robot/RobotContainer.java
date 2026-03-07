@@ -14,8 +14,12 @@ import frc.robot.commands.AutoDrive;
 import frc.robot.commands.AutoDriveDistance;
 import frc.robot.commands.Drive;
 import static frc.robot.Constants.AutoConstants.*;
+import static frc.robot.Constants.IoConstants.INTAKING_IO_VOLTAGE;
+
 import frc.robot.subsystems.CANDriveSubsystem;
 import frc.robot.subsystems.IoSubsystem;
+
+//import frc.robot.subsystems.IoSubsystem.commandLaunch;
 
 /**
  * Robot container: subsystems, driver/operator controllers, button bindings,
@@ -24,17 +28,16 @@ import frc.robot.subsystems.IoSubsystem;
 public class RobotContainer {
   private final CANDriveSubsystem driveSubsystem = new CANDriveSubsystem();
   private final IoSubsystem ioSubsystem = new IoSubsystem();
-  private final CommandXboxController driverController =
-      new CommandXboxController(DRIVER_CONTROLLER_PORT);
-  private final CommandXboxController operatorController =
-      new CommandXboxController(OPERATOR_CONTROLLER_PORT);
+  private final CommandXboxController driverController = new CommandXboxController(DRIVER_CONTROLLER_PORT);
+  private final CommandXboxController operatorController = new CommandXboxController(OPERATOR_CONTROLLER_PORT);
   private final SendableChooser<Command> autoChooser = new SendableChooser<>();
 
   public RobotContainer() {
     configureBindings();
 
     autoChooser.setDefaultOption("Do Nothing", Commands.none());
-    autoChooser.addOption("Center → Drive & Shoot", centerDriveAndShootCommand());
+    // autoChooser.addOption("Center → Drive & Shoot",
+    // centerDriveAndShootCommand());
     autoChooser.addOption("Drive Forward 2s", new AutoDrive(driveSubsystem, 0.5, 0.0).withTimeout(2.0));
 
     autoChooser.addOption("(test) turn left 2s",
@@ -68,27 +71,33 @@ public class RobotContainer {
 
   private void configureBindings() {
     driveSubsystem.setDefaultCommand(new Drive(driveSubsystem, driverController));
-    ioSubsystem.setDefaultCommand(ioSubsystem.commandStop());
+    ioSubsystem.setDefaultCommand(ioSubsystem.commandIdle());
 
     driverController.leftTrigger(TRIGGER_THRESHOLD).whileTrue(ioSubsystem.commandIntake());
     driverController.rightTrigger(TRIGGER_THRESHOLD).whileTrue(ioSubsystem.commandLaunch());
     driverController.leftBumper().whileTrue(ioSubsystem.commandEject());
-    driverController.x().toggleOnTrue(ioSubsystem.commandIoSpinUp50());
+    driverController.x().onTrue(Commands.runOnce(ioSubsystem::toggleSpinUp50Requested));
+    driverController.y().whileTrue(ioSubsystem.commandReverseFlywheelAndLoader());
     driverController.b().onTrue(driveSubsystem.runOnce(driveSubsystem::resetEncoders));
+    driverController.a().onTrue(ioSubsystem.commandMaxSpin());
   }
 
   /**
-   * Autonomous: start at center, drive toward our HUB to shooting range, then launch into HUB.
-   * Assumes robot is facing the alliance HUB. Tune CENTER_TO_SHOOT_DRIVE_METERS for your shooter.
+   * Autonomous: start at center, drive toward our HUB to shooting range, then
+   * launch into HUB.
+   * Assumes robot is facing the alliance HUB. Tune CENTER_TO_SHOOT_DRIVE_METERS
+   * for your shooter.
    */
-  private Command centerDriveAndShootCommand() {
-    return new AutoDriveDistance(driveSubsystem, CENTER_TO_SHOOT_DRIVE_METERS, CENTER_TO_SHOOT_SPEED)
-        .andThen(ioSubsystem.commandLaunch().withTimeout(CENTER_TO_SHOOT_LAUNCH_SECONDS))
-        .andThen(Commands.none());
+  public Command autonomousCommand() {
+
+    Command run = new AutoDrive(driveSubsystem, 0.5, 0.0).withTimeout(1.0);
+    Command spin = ioSubsystem.commandIntake().withTimeout(7.0);
+    return Commands.sequence(spin, run);
+
   }
 
   /** Returns the autonomous command selected on the dashboard. */
   public Command getAutonomousCommand() {
-    return autoChooser.getSelected();
+    return autonomousCommand();
   }
 }
