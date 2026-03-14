@@ -97,6 +97,13 @@ public class IoSubsystem extends SubsystemBase {
 
   }
 
+  public Command commandIntakeAuton() {
+    return Commands.sequence(
+        commandSpeeds(INTAKING_IO_VOLTAGE, 0, 0).withTimeout(INTAKE_AUTON_SPIN_UP_SECONDS),
+        commandSpeeds(INTAKING_IO_VOLTAGE, INTAKING_INTAKE_OUTPUT, INTAKING_LOADER_OUTPUT));
+
+  }
+
   /** Spin up / prepare without fully launching (optional helper). */
   public Command commandPrepare() {
     return commandSpeeds(PREPARING_IO_VOLTAGE, INTAKING_INTAKE_OUTPUT, PREPARING_LOADER_OUTPUT);

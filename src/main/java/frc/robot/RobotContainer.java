@@ -79,7 +79,7 @@ public class RobotContainer {
     driverController.x().onTrue(Commands.runOnce(ioSubsystem::toggleSpinUp50Requested));
     driverController.y().whileTrue(ioSubsystem.commandReverseFlywheelAndLoader());
     driverController.b().onTrue(driveSubsystem.runOnce(driveSubsystem::resetEncoders));
-    driverController.a().onTrue(ioSubsystem.commandMaxSpin());
+    driverController.a().whileTrue(ioSubsystem.commandMaxSpin());
   }
 
   /**
@@ -91,7 +91,7 @@ public class RobotContainer {
   public Command autonomousCommand() {
 
     Command run = new AutoDrive(driveSubsystem, 0.5, 0.0).withTimeout(1.0);
-    Command spin = ioSubsystem.commandIntake().withTimeout(7.0);
+    Command spin = ioSubsystem.commandIntakeAuton().withTimeout(7.0);
     return Commands.sequence(spin, run);
 
   }
