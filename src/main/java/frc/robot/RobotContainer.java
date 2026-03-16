@@ -80,6 +80,7 @@ public class RobotContainer {
     driverController.y().whileTrue(ioSubsystem.commandReverseFlywheelAndLoader());
     driverController.b().onTrue(driveSubsystem.runOnce(driveSubsystem::resetEncoders));
     driverController.a().whileTrue(ioSubsystem.commandMaxSpin());
+    driverController.rightBumper().whileTrue(Commands.runOnce(ioSubsystem::toggleSpinUpBBRequested));
   }
 
   /**

@@ -24,6 +24,7 @@ public final class Constants {
   }
 
   public static final class IoConstants {
+    public static final double TARGET_RPM = 3000;
     public static final int IO_MOTOR_ID = 9;
     /**
      * Intake (12) – pulls fuel from floor/storage. Anti-clockwise = intake;
@@ -37,7 +38,7 @@ public final class Constants {
     public static final int LOADER_MOTOR_CURRENT_LIMIT = 60;
 
     /** IO flywheel voltage when intaking from the floor/storage. */
-    public static final double INTAKING_IO_VOLTAGE = 6;
+    public static final double INTAKING_IO_VOLTAGE = 5.7;
     /** Intake motor voltage when intaking. */
     public static final double INTAKING_INTAKE_OUTPUT = -10;
     /** Loader duty cycle (0–1) when intaking. */

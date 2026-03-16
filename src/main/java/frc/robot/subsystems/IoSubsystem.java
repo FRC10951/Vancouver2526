@@ -1,16 +1,22 @@
 package frc.robot.subsystems;
 
 import com.revrobotics.PersistMode;
+import com.revrobotics.RelativeEncoder;
 import com.revrobotics.ResetMode;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
+import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.controller.BangBangController;
+import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import static frc.robot.Constants.IoConstants.*;
+
+import frc.robot.Constants.IoConstants;
 import frc.robot.Constants.IoConstants.IoCanIdGroup;
 
 /**
@@ -23,8 +29,13 @@ public class IoSubsystem extends SubsystemBase {
   private final SparkMax ioMotor;
   /** When true, idle state runs IO at 50% (survives intake/launch). */
   private boolean spinUp50Requested = false;
+  private boolean spinUpBBRequested = false;
   private final SparkMax intakeMotor;
   private final SparkMax loaderMotor;
+  private final RelativeEncoder ioEncoder;
+  private final BangBangController shooterBangBang;
+
+  private double targetRPM = IoConstants.TARGET_RPM;
 
   public IoSubsystem() {
     this(IO_CAN_IDS);
@@ -47,6 +58,11 @@ public class IoSubsystem extends SubsystemBase {
     SparkMaxConfig loaderConfig = new SparkMaxConfig();
     loaderConfig.smartCurrentLimit(LOADER_MOTOR_CURRENT_LIMIT);
     loaderMotor.configure(loaderConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+
+    ioEncoder = ioMotor.getEncoder();
+    shooterBangBang = new BangBangController();
+    shooterBangBang.setTolerance(30); // TODO
+
   }
 
   /** Set IO motor by voltage and loader by duty cycle (0–1). */
@@ -54,6 +70,22 @@ public class IoSubsystem extends SubsystemBase {
     ioMotor.setVoltage(ioVoltage);
     intakeMotor.setVoltage(intakeOutput);
     loaderMotor.set(loaderOutput);
+  }
+
+  public void setShooterPower(double shooterPower) {
+    ioMotor.set(shooterPower);
+  }
+
+  public void runShooterBangBang() {
+    double bbOutput = shooterBangBang.calculate(ioEncoder.getVelocity(), targetRPM);
+
+    ioMotor.set(MathUtil.clamp(bbOutput, 0.0, 1.0));
+
+  }
+
+  public Command runIntake(double intakeTime) {
+    return commandSpeeds(INTAKING_IO_VOLTAGE, INTAKING_INTAKE_OUTPUT, INTAKING_LOADER_OUTPUT)
+        .withTimeout(intakeTime);
   }
 
   public void stop() {
@@ -68,7 +100,9 @@ public class IoSubsystem extends SubsystemBase {
   public void toggleSpinUp50Requested() {
     spinUp50Requested = !spinUp50Requested;
   }
-
+  public void toggleSpinUpBBRequested() {
+    spinUpBBRequested = !spinUpBBRequested;
+  }
   /** Default command: when no other command runs, apply spin-50 or stop. */
   public Command commandIdle() {
     return run(this::applyIdleState);
@@ -77,9 +111,21 @@ public class IoSubsystem extends SubsystemBase {
   private void applyIdleState() {
     if (spinUp50Requested) {
       setSpeeds(IO_SPIN_UP_50_VOLTAGE, 0, 0);
+      //runBangBang();
     } else {
       stop();
     }
+  }
+  private void applyIdleStateBangBang() {
+      if (spinUpBBRequested) {
+        //setSpeeds(IO_SPIN_UP_50_VOLTAGE, 0, 0);
+        runBangBang();
+      } else {
+        stop();
+      }
+    }
+  public Command runBangBang() {
+    return run(this::runShooterBangBang);
   }
 
   public Command commandSpeeds(double ioVoltage, double intakeOutput, double loaderOutput) {
