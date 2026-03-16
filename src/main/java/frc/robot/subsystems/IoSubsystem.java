@@ -9,7 +9,6 @@ import com.revrobotics.spark.config.SparkMaxConfig;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.BangBangController;
-import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -25,16 +24,13 @@ import frc.robot.Constants.IoConstants.IoCanIdGroup;
  * brushless SPARK MAX.
  */
 public class IoSubsystem extends SubsystemBase {
-  private final IoCanIdGroup canIds;
   private final SparkMax ioMotor;
   /** When true, idle state runs IO at 50% (survives intake/launch). */
   private boolean spinUp50Requested = false;
-  private boolean spinUpBBRequested = false;
   private final SparkMax intakeMotor;
   private final SparkMax loaderMotor;
   private final RelativeEncoder ioEncoder;
   private final BangBangController shooterBangBang;
-
   private double targetRPM = IoConstants.TARGET_RPM;
 
   public IoSubsystem() {
@@ -42,8 +38,6 @@ public class IoSubsystem extends SubsystemBase {
   }
 
   public IoSubsystem(IoCanIdGroup canIds) {
-    this.canIds = canIds;
-
     ioMotor = new SparkMax(canIds.ioMotorId, MotorType.kBrushless);
     SparkMaxConfig ioConfig = new SparkMaxConfig();
     ioConfig.smartCurrentLimit(IO_MOTOR_CURRENT_LIMIT);
@@ -77,10 +71,11 @@ public class IoSubsystem extends SubsystemBase {
   }
 
   public void runShooterBangBang() {
-    double bbOutput = shooterBangBang.calculate(ioEncoder.getVelocity(), targetRPM);
-
-    ioMotor.set(MathUtil.clamp(bbOutput, 0.0, 1.0));
-
+    // Bang-bang on shooter RPM; encoder velocity is already in RPM.
+    double controllerOutput = shooterBangBang.calculate(ioEncoder.getVelocity(), targetRPM);
+    // Only allow forward (launch) direction; clamp to [0, 1].
+    double clamped = MathUtil.clamp(controllerOutput, 0.0, 1.0);
+    ioMotor.set(clamped);
   }
 
   public Command runIntake(double intakeTime) {
@@ -100,10 +95,7 @@ public class IoSubsystem extends SubsystemBase {
   public void toggleSpinUp50Requested() {
     spinUp50Requested = !spinUp50Requested;
   }
-  public void toggleSpinUpBBRequested() {
-    spinUpBBRequested = !spinUpBBRequested;
-  }
-  /** Default command: when no other command runs, apply spin-50 or stop. */
+  /** Default command: when no other command runs, apply idle spin logic. */
   public Command commandIdle() {
     return run(this::applyIdleState);
   }
@@ -111,19 +103,10 @@ public class IoSubsystem extends SubsystemBase {
   private void applyIdleState() {
     if (spinUp50Requested) {
       setSpeeds(IO_SPIN_UP_50_VOLTAGE, 0, 0);
-      //runBangBang();
     } else {
       stop();
     }
   }
-  private void applyIdleStateBangBang() {
-      if (spinUpBBRequested) {
-        //setSpeeds(IO_SPIN_UP_50_VOLTAGE, 0, 0);
-        runBangBang();
-      } else {
-        stop();
-      }
-    }
   public Command runBangBang() {
     return run(this::runShooterBangBang);
   }
@@ -158,6 +141,11 @@ public class IoSubsystem extends SubsystemBase {
   /** Launch fuel toward the target (no spin-up delay). */
   public Command commandLaunch() {
     return commandSpeeds(LAUNCHING_IO_VOLTAGE, INTAKING_INTAKE_OUTPUT, LAUNCHING_LOADER_OUTPUT);
+  }
+
+  /** Launch fuel toward the target at 9 V (medium-power shot). */
+  public Command commandLaunchMedium() {
+    return commandSpeeds(LAUNCHING_IO_MEDIUM_VOLTAGE, INTAKING_INTAKE_OUTPUT, LAUNCHING_LOADER_OUTPUT);
   }
 
   /** Eject: IO off; intake and loader run in reverse. */

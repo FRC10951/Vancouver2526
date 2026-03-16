@@ -24,7 +24,6 @@ public final class Constants {
   }
 
   public static final class IoConstants {
-    public static final double TARGET_RPM = 3000;
     public static final int IO_MOTOR_ID = 9;
     /**
      * Intake (12) – pulls fuel from floor/storage. Anti-clockwise = intake;
@@ -32,13 +31,13 @@ public final class Constants {
      */
     public static final int INTAKE_MOTOR_ID = 12;
     public static final int LOADER_MOTOR_ID = 19;
-    // intake variable swaped with lanch variable
+    /** Current limits (amps) for IO / intake / loader motors. */
     public static final int IO_MOTOR_CURRENT_LIMIT = 60;
     public static final int INTAKE_MOTOR_CURRENT_LIMIT = 60;
     public static final int LOADER_MOTOR_CURRENT_LIMIT = 60;
 
     /** IO flywheel voltage when intaking from the floor/storage. */
-    public static final double INTAKING_IO_VOLTAGE = 5.7;
+    public static final double INTAKING_IO_VOLTAGE = 12;
     /** Intake motor voltage when intaking. */
     public static final double INTAKING_INTAKE_OUTPUT = -10;
     /** Loader duty cycle (0–1) when intaking. */
@@ -51,7 +50,11 @@ public final class Constants {
      * Flywheel (IO) voltage during launch; spin-up phase uses this before feeding
      * loader.
      */
-    public static final double LAUNCHING_IO_VOLTAGE = 4;
+    public static final double LAUNCHING_IO_VOLTAGE = -1;
+    /**
+     * Medium-power launch flywheel voltage (same direction as LAUNCHING_IO_VOLTAGE).
+     */
+    public static final double LAUNCHING_IO_MEDIUM_VOLTAGE = -1;
     /**
      * Loader duty cycle (0–1) for launching at fixed speed (opposite direction of
      * intake).
@@ -59,14 +62,23 @@ public final class Constants {
     public static final double LAUNCHING_LOADER_OUTPUT = -INTAKING_LOADER_OUTPUT;
 
     /** Delay (seconds) to spin up flywheel before feeding loader when launching. */
-    public static final double LAUNCH_SPIN_UP_SECONDS = 1.0;
+    public static final double LAUNCH_SPIN_UP_SECONDS = 0.5;
+
+    // Extra constants used elsewhere in the codebase (names only improved; signs match above).
+    /** Target shooter wheel speed for closed-loop control (RPM). */
+    public static final double TARGET_RPM = 3000.0;
     /**
      * Delay (seconds) to spin up IO flywheel before intake/loader when intaking.
      */
-    public static final double INTAKE_SPIN_UP_SECONDS = 0;
-    public static final double INTAKE_AUTON_SPIN_UP_SECONDS = 2; // Intake spinup for auton specifically
+    public static final double INTAKE_SPIN_UP_SECONDS = 0.0;
+    /**
+     * Delay (seconds) to spin up IO flywheel before intake/loader when intaking in
+     * autonomous.
+     */
+    public static final double INTAKE_AUTON_SPIN_UP_SECONDS = 2.0;
     /**
      * IO motor voltage for "spin up 50%" toggle (X button). 50% of typical 12 V.
+     * Sign chosen to match the intake direction.
      */
     public static final double IO_SPIN_UP_50_VOLTAGE = 6.0;
 

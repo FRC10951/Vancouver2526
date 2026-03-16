@@ -11,10 +11,8 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import static frc.robot.Constants.OperatorConstants.*;
 
 import frc.robot.commands.AutoDrive;
-import frc.robot.commands.AutoDriveDistance;
 import frc.robot.commands.Drive;
-import static frc.robot.Constants.AutoConstants.*;
-import static frc.robot.Constants.IoConstants.INTAKING_IO_VOLTAGE;
+// import static frc.robot.Constants.AutoConstants.*;
 
 import frc.robot.subsystems.CANDriveSubsystem;
 import frc.robot.subsystems.IoSubsystem;
@@ -77,10 +75,9 @@ public class RobotContainer {
     driverController.rightTrigger(TRIGGER_THRESHOLD).whileTrue(ioSubsystem.commandLaunch());
     driverController.leftBumper().whileTrue(ioSubsystem.commandEject());
     driverController.x().onTrue(Commands.runOnce(ioSubsystem::toggleSpinUp50Requested));
-    driverController.y().whileTrue(ioSubsystem.commandReverseFlywheelAndLoader());
+    driverController.y().whileTrue(ioSubsystem.runBangBang());
     driverController.b().onTrue(driveSubsystem.runOnce(driveSubsystem::resetEncoders));
-    driverController.a().whileTrue(ioSubsystem.commandMaxSpin());
-    driverController.rightBumper().whileTrue(Commands.runOnce(ioSubsystem::toggleSpinUpBBRequested));
+    driverController.a().whileTrue(ioSubsystem.commandLaunchMedium());
   }
 
   /**
