@@ -12,6 +12,7 @@ import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
+import edu.wpi.first.wpilibj.simulation.EncoderSim;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import static frc.robot.Constants.DriveConstants.*;
@@ -37,6 +38,9 @@ public class CANDriveSubsystem extends SubsystemBase {
   // --- Encoders ---
   private final RelativeEncoder leftEncoder;
   private final RelativeEncoder rightEncoder;
+
+  // private final EncoderSim leftEncoderSim;
+  // private final EncoderSim rightEncoderSim;
 
   private static final double METERS_PER_ROTATION = (Math.PI * WHEEL_DIAMETER_METERS) / GEAR_RATIO;
 
@@ -80,6 +84,10 @@ public class CANDriveSubsystem extends SubsystemBase {
     // Built-in encoders
     leftEncoder = leftLeader.getEncoder();
     rightEncoder = rightLeader.getEncoder();
+
+    // setup simulation
+    // leftEncoderSim = new EncoderSim(leftEncoder);
+    // rightEncoderSim = new EncoderSim(rightEncoder);
   }
 
   // ---------------------------------------------------------------------------
