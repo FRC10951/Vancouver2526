@@ -51,7 +51,7 @@ public final class Constants {
      * Flywheel (IO) voltage during launch; spin-up phase uses this before feeding
      * loader.
      */
-    public static final double LAUNCHING_IO_VOLTAGE = 0;
+    public static final double LAUNCHING_IO_VOLTAGE = 4;
     /**
      * Loader duty cycle (0–1) for launching at fixed speed (opposite direction of
      * intake).
