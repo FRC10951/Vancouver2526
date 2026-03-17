@@ -79,7 +79,10 @@ public class RobotContainer {
     driverController.leftBumper().whileTrue(ioSubsystem.commandEject());
     driverController.x().onTrue(Commands.runOnce(ioSubsystem::toggleSpinUp50Requested));
     driverController.y().whileTrue(ioSubsystem.commandReverseFlywheelAndLoader());
-    driverController.b().onTrue(driveSubsystem.runOnce(driveSubsystem::resetEncoders));
+    // B button: high-speed shoot with automatic forward/backward wiggle.
+    driverController.b().whileTrue(
+        ioSubsystem.commandHighSpeedLaunch()
+            .alongWith(driveSubsystem.commandIntakeWiggle(0.3, 0.5)));
     driverController.a().whileTrue(ioSubsystem.commandMaxSpin());
   }
 

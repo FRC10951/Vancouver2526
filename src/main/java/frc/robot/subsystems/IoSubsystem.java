@@ -57,6 +57,12 @@ public class IoSubsystem extends SubsystemBase {
     loaderMotor.configure(loaderConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
   }
 
+  @Override
+  public void periodic() {
+    // Keep shooter speed control running every cycle whenever it is enabled.
+    updateShooterControl();
+  }
+
   /** Set IO motor by voltage and loader by duty cycle (0–1). */
   public void setSpeeds(double ioVoltage, double intakeOutput, double loaderOutput) {
     ioMotor.setVoltage(ioVoltage);
@@ -173,8 +179,7 @@ public class IoSubsystem extends SubsystemBase {
               enableShooterAtSpeed(SHOOTER_TARGET_SPEED_INTAKE_RPM);
               intakeMotor.setVoltage(INTAKING_INTAKE_OUTPUT);
               double current = getShooterSpeedRpm();
-              boolean atSpeed =
-                  current >= SHOOTER_TARGET_SPEED_INTAKE_RPM * SHOOTER_SPINUP_THRESHOLD_FRACTION;
+              boolean atSpeed = current >= SHOOTER_TARGET_SPEED_INTAKE_RPM * SHOOTER_SPINUP_THRESHOLD_FRACTION;
               loaderMotor.set(atSpeed ? LAUNCHING_LOADER_OUTPUT : 0.0);
             })
             .finallyDo(interrupted -> {
@@ -206,21 +211,25 @@ public class IoSubsystem extends SubsystemBase {
 
   /**
    * Intake from floor/storage without spinning up the shooter.
-   * Runs intake + loader (indexer) only; shooter stays off unless the X-toggle idle mode
+   * Runs intake + loader (indexer) only; shooter stays off unless the X-toggle
+   * idle mode
    * is requested, in which case it is restored after the command ends.
    *
-   * <p>Both motors are set every cycle in execute() so the loader runs continuously
-   * and redirects fuel into storage. The command never self-finishes; it runs until
-   * the trigger is released or another command requiring this subsystem interrupts.
+   * <p>
+   * Both motors are set every cycle in execute() so the loader runs continuously
+   * and redirects fuel into storage. The command never self-finishes; it runs
+   * until
+   * the trigger is released or another command requiring this subsystem
+   * interrupts.
    */
   public Command commandIntake() {
     return Commands.run(
-            () -> {
-              disableShooter();
-              intakeMotor.setVoltage(INTAKING_INTAKE_OUTPUT);
-              loaderMotor.set(INTAKING_LOADER_OUTPUT);
-            },
-            this)
+        () -> {
+          disableShooter();
+          intakeMotor.setVoltage(INTAKING_INTAKE_OUTPUT);
+          loaderMotor.set(INTAKING_LOADER_OUTPUT);
+        },
+        this)
         .withName("Intake")
         .finallyDo(interrupted -> {
           intakeMotor.setVoltage(0.0);
@@ -236,7 +245,8 @@ public class IoSubsystem extends SubsystemBase {
   /**
    * Shoot: spin up shooter using encoder control, then feed intake + loader.
    * Loader is gated on shooter speed so balls only feed when near target RPM.
-   * When released, shooter only continues if the X-button idle spin-up is enabled.
+   * When released, shooter only continues if the X-button idle spin-up is
+   * enabled.
    */
   public Command commandLaunch() {
     return Commands.sequence(
@@ -250,8 +260,7 @@ public class IoSubsystem extends SubsystemBase {
               intakeMotor.setVoltage(INTAKING_INTAKE_OUTPUT);
               // Only feed balls once shooter is near target speed.
               double current = getShooterSpeedRpm();
-              boolean atSpeed =
-                  current >= SHOOTER_TARGET_SPEED_INTAKE_RPM * SHOOTER_SPINUP_THRESHOLD_FRACTION;
+              boolean atSpeed = current >= SHOOTER_TARGET_SPEED_INTAKE_RPM * SHOOTER_SPINUP_THRESHOLD_FRACTION;
               loaderMotor.set(atSpeed ? LAUNCHING_LOADER_OUTPUT : 0.0);
             })
             .finallyDo(interrupted -> {
@@ -265,9 +274,37 @@ public class IoSubsystem extends SubsystemBase {
             }));
   }
 
+  /**
+   * High-speed shoot: similar to {@link #commandLaunch()} but with a higher
+   * shooter RPM for a stronger shot.
+   */
+  public Command commandHighSpeedLaunch() {
+    final double highSpeedRpm = SHOOTER_TARGET_SPEED_INTAKE_RPM * 1.4;
+    return Commands.sequence(
+        this.run(() -> enableShooterAtSpeed(highSpeedRpm))
+            .withTimeout(INTAKE_SPIN_UP_SECONDS),
+        this.run(
+            () -> {
+              enableShooterAtSpeed(highSpeedRpm);
+              intakeMotor.setVoltage(INTAKING_INTAKE_OUTPUT);
+              double current = getShooterSpeedRpm();
+              boolean atSpeed =
+                  current >= highSpeedRpm * SHOOTER_SPINUP_THRESHOLD_FRACTION;
+              loaderMotor.set(atSpeed ? LAUNCHING_LOADER_OUTPUT : 0.0);
+            })
+            .finallyDo(interrupted -> {
+              intakeMotor.setVoltage(0.0);
+              loaderMotor.set(0.0);
+              if (!spinUp50Requested) {
+                disableShooter();
+              }
+            }));
+  }
+
   /** Eject: IO off; intake and loader run in reverse. */
   public Command commandEject() {
-    return commandSpeeds(0, -INTAKING_INTAKE_OUTPUT, INTAKING_LOADER_OUTPUT);
+    // Reverse intake and loader relative to normal intaking so game pieces exit.
+    return commandSpeeds(0, -INTAKING_INTAKE_OUTPUT, -INTAKING_LOADER_OUTPUT);
   }
 
   /** IO motor only at 50% (for X button toggle). */

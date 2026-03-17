@@ -41,9 +41,9 @@ public final class Constants {
     // -----------------------------------------------------------------------
 
     /** Target shooter speed (RPM) for the main shooting/intake command. */
-    public static final double SHOOTER_TARGET_SPEED_INTAKE_RPM = 3000.0;
+    public static final double SHOOTER_TARGET_SPEED_INTAKE_RPM = 2000.0;
     /** Target shooter speed (RPM) for the 50% spin-up toggle. */
-    public static final double SHOOTER_TARGET_SPEED_SPINUP50_RPM = 2000.0;
+    public static final double SHOOTER_TARGET_SPEED_SPINUP50_RPM = 1000.0;
     /** Target shooter speed (RPM) when using the right-trigger toggle. */
     public static final double SHOOTER_TARGET_SPEED_TOGGLE_RPM = SHOOTER_TARGET_SPEED_INTAKE_RPM;
 
@@ -69,7 +69,7 @@ public final class Constants {
     // -----------------------------------------------------------------------
 
     /** Intake motor voltage when feeding balls toward the shooter. */
-    public static final double INTAKING_INTAKE_OUTPUT = -10;
+    public static final double INTAKING_INTAKE_OUTPUT = -6.0;
     /**
      * Loader target voltage when feeding balls toward the shooter.
      * Sign controls direction; use negative to invert.
