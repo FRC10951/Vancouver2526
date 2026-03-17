@@ -13,6 +13,8 @@ import com.revrobotics.spark.config.SparkMaxConfig;
 
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import static frc.robot.Constants.DriveConstants.*;
 
@@ -191,5 +193,20 @@ public class CANDriveSubsystem extends SubsystemBase {
   public void resetEncoders() {
     leftEncoder.setPosition(0);
     rightEncoder.setPosition(0);
+  }
+
+  /**
+   * Small fast back-and-forth wiggle motion, used while the intake/shooter
+   * command is active. Runs until interrupted.
+   *
+   * @param wiggleSpeed       forward/backward speed [-1, 1], small magnitude
+   * @param halfPeriodSeconds time for each half of the wiggle cycle
+   */
+  public Command commandIntakeWiggle(double wiggleSpeed, double halfPeriodSeconds) {
+    Command forward = this.run(() -> driveArcade(wiggleSpeed, 0)).withTimeout(halfPeriodSeconds);
+    Command backward = this.run(() -> driveArcade(-wiggleSpeed, 0)).withTimeout(halfPeriodSeconds);
+    return Commands.sequence(forward, backward)
+        .repeatedly()
+        .finallyDo(interrupted -> stop());
   }
 }

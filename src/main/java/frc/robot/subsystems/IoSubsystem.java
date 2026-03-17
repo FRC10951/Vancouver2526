@@ -25,7 +25,15 @@ import frc.robot.Constants.IoConstants.IoCanIdGroup;
  */
 public class IoSubsystem extends SubsystemBase {
   private final SparkMax ioMotor;
-  /** When true, idle state runs IO at 50% (survives intake/launch). */
+  private final RelativeEncoder ioEncoder;
+  /** When true, idle state or toggle modes keep shooter spinning. */
+  private boolean shooterEnabled = false;
+  /** Target shooter speed in RPM for encoder-based control. */
+  private double shooterTargetSpeedRpm = 0.0;
+  /**
+   * When true, idle state runs IO at 50% equivalent speed (survives
+   * intake/launch).
+   */
   private boolean spinUp50Requested = false;
   private final SparkMax intakeMotor;
   private final SparkMax loaderMotor;
@@ -41,7 +49,9 @@ public class IoSubsystem extends SubsystemBase {
     ioMotor = new SparkMax(canIds.ioMotorId, MotorType.kBrushless);
     SparkMaxConfig ioConfig = new SparkMaxConfig();
     ioConfig.smartCurrentLimit(IO_MOTOR_CURRENT_LIMIT);
+    ioConfig.voltageCompensation(12.0);
     ioMotor.configure(ioConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    ioEncoder = ioMotor.getEncoder();
 
     intakeMotor = new SparkMax(canIds.intakeMotorId, MotorType.kBrushless);
     SparkMaxConfig intakeConfig = new SparkMaxConfig();
@@ -66,25 +76,28 @@ public class IoSubsystem extends SubsystemBase {
     loaderMotor.set(loaderOutput);
   }
 
-  public void setShooterPower(double shooterPower) {
-    ioMotor.set(shooterPower);
+  /** Returns the current shooter (IO motor) speed in RPM. */
+  public double getShooterSpeedRpm() {
+    return ioEncoder.getVelocity();
   }
 
-  public void runShooterBangBang() {
-    // Bang-bang on shooter RPM; encoder velocity is already in RPM.
-    double controllerOutput = shooterBangBang.calculate(ioEncoder.getVelocity(), targetRPM);
-    // Only allow forward (launch) direction; clamp to [0, 1].
-    double clamped = MathUtil.clamp(controllerOutput, 0.0, 1.0);
-    ioMotor.set(clamped);
+  /** Enables the shooter at the given target speed (RPM). */
+  public void enableShooterAtSpeed(double targetSpeedRpm) {
+    shooterEnabled = true;
+    shooterTargetSpeedRpm = Math.max(0.0, targetSpeedRpm);
   }
 
-  public Command runIntake(double intakeTime) {
-    return commandSpeeds(INTAKING_IO_VOLTAGE, INTAKING_INTAKE_OUTPUT, INTAKING_LOADER_OUTPUT)
-        .withTimeout(intakeTime);
+  /** Disables the shooter (used when no mode requests it). */
+  public void disableShooter() {
+    shooterEnabled = false;
+    shooterTargetSpeedRpm = 0.0;
+    ioMotor.setVoltage(0.0);
   }
 
   public void stop() {
     setSpeeds(0.0, 0.0, 0.0);
+    shooterEnabled = false;
+    shooterTargetSpeedRpm = 0.0;
   }
 
   public Command commandStop() {
@@ -101,51 +114,166 @@ public class IoSubsystem extends SubsystemBase {
   }
 
   private void applyIdleState() {
+    // Only the X-button idle mode should keep the shooter spun up persistently.
     if (spinUp50Requested) {
-      setSpeeds(IO_SPIN_UP_50_VOLTAGE, 0, 0);
+      enableShooterAtSpeed(SHOOTER_TARGET_SPEED_SPINUP50_RPM);
     } else {
-      stop();
+      disableShooter();
     }
-  }
-  public Command runBangBang() {
-    return run(this::runShooterBangBang);
-  }
-
-  public Command commandSpeeds(double ioVoltage, double intakeOutput, double loaderOutput) {
-    return startEnd(() -> setSpeeds(ioVoltage, intakeOutput, loaderOutput), this::stop);
+    // Intake and loader are idle in this state.
+    updateShooterControl();
+    intakeMotor.setVoltage(0.0);
+    loaderMotor.set(0.0);
   }
 
   /**
-   * Intake from floor/storage into the robot. IO spins up first, then
-   * intake/loader.
+   * Simple closed-loop control for shooter speed using encoder feedback.
+   * Uses a spinup region with max voltage, then P-control around a base voltage.
    */
-  public Command commandIntake() {
-    return Commands.sequence(
-        commandSpeeds(INTAKING_IO_VOLTAGE, 0, 0).withTimeout(INTAKE_SPIN_UP_SECONDS),
-        commandSpeeds(INTAKING_IO_VOLTAGE, INTAKING_INTAKE_OUTPUT, INTAKING_LOADER_OUTPUT));
+  private void updateShooterControl() {
+    if (!shooterEnabled || shooterTargetSpeedRpm <= 0.0) {
+      ioMotor.setVoltage(0.0);
+      return;
+    }
 
+    double currentSpeedRpm = getShooterSpeedRpm();
+    double target = shooterTargetSpeedRpm;
+
+    // Spin-up region: below threshold, use max voltage.
+    if (currentSpeedRpm < target * SHOOTER_SPINUP_THRESHOLD_FRACTION) {
+      double commanded = Math.copySign(SHOOTER_MAX_VOLTAGE, target);
+      ioMotor.setVoltage(commanded);
+      return;
+    }
+
+    // Hold region: P-control around a base voltage.
+    double error = target - currentSpeedRpm;
+    double commanded = SHOOTER_HOLD_BASE_VOLTAGE + SHOOTER_KP * error;
+
+    // Clamp to max voltage.
+    if (commanded > SHOOTER_MAX_VOLTAGE) {
+      commanded = SHOOTER_MAX_VOLTAGE;
+    } else if (commanded < -SHOOTER_MAX_VOLTAGE) {
+      commanded = -SHOOTER_MAX_VOLTAGE;
+    }
+
+    ioMotor.setVoltage(commanded);
+  }
+
+  public Command commandSpeeds(double ioVoltage, double intakeOutput, double loaderOutput) {
+    return startEnd(
+        () -> {
+          // For legacy callers that still pass an IO voltage, treat that as enabling
+          // shooter at the intake target speed; IO voltage itself is now controlled
+          // by the encoder loop.
+          if (ioVoltage != 0.0) {
+            enableShooterAtSpeed(SHOOTER_TARGET_SPEED_INTAKE_RPM);
+          }
+          intakeMotor.setVoltage(intakeOutput);
+          loaderMotor.set(loaderOutput);
+        },
+        this::stop);
   }
 
   public Command commandIntakeAuton() {
     return Commands.sequence(
-        commandSpeeds(INTAKING_IO_VOLTAGE, 0, 0).withTimeout(INTAKE_AUTON_SPIN_UP_SECONDS),
-        commandSpeeds(INTAKING_IO_VOLTAGE, INTAKING_INTAKE_OUTPUT, INTAKING_LOADER_OUTPUT));
-
+        this.run(() -> enableShooterAtSpeed(SHOOTER_TARGET_SPEED_INTAKE_RPM))
+            .withTimeout(INTAKE_AUTON_SPIN_UP_SECONDS),
+        this.run(
+            () -> {
+              enableShooterAtSpeed(SHOOTER_TARGET_SPEED_INTAKE_RPM);
+              intakeMotor.setVoltage(INTAKING_INTAKE_OUTPUT);
+              double current = getShooterSpeedRpm();
+              boolean atSpeed =
+                  current >= SHOOTER_TARGET_SPEED_INTAKE_RPM * SHOOTER_SPINUP_THRESHOLD_FRACTION;
+              loaderMotor.set(atSpeed ? LAUNCHING_LOADER_OUTPUT : 0.0);
+            })
+            .finallyDo(interrupted -> {
+              intakeMotor.setVoltage(0.0);
+              loaderMotor.set(0.0);
+              if (!spinUp50Requested) {
+                disableShooter();
+              }
+            }));
   }
 
   /** Spin up / prepare without fully launching (optional helper). */
   public Command commandPrepare() {
-    return commandSpeeds(PREPARING_IO_VOLTAGE, INTAKING_INTAKE_OUTPUT, PREPARING_LOADER_OUTPUT);
+    return this.run(
+        () -> {
+          enableShooterAtSpeed(SHOOTER_TARGET_SPEED_INTAKE_RPM);
+          intakeMotor.setVoltage(INTAKING_INTAKE_OUTPUT);
+          double current = getShooterSpeedRpm();
+          boolean atSpeed = current >= SHOOTER_TARGET_SPEED_INTAKE_RPM * SHOOTER_SPINUP_THRESHOLD_FRACTION;
+          loaderMotor.set(atSpeed ? PREPARING_LOADER_OUTPUT : 0.0);
+        }).finallyDo(interrupted -> {
+          intakeMotor.setVoltage(0.0);
+          loaderMotor.set(0.0);
+          if (!spinUp50Requested) {
+            disableShooter();
+          }
+        });
   }
 
-  /** Launch fuel toward the target (no spin-up delay). */
+  /**
+   * Intake from floor/storage without spinning up the shooter.
+   * Runs intake + loader (indexer) only; shooter stays off unless the X-toggle idle mode
+   * is requested, in which case it is restored after the command ends.
+   *
+   * <p>Both motors are set every cycle in execute() so the loader runs continuously
+   * and redirects fuel into storage. The command never self-finishes; it runs until
+   * the trigger is released or another command requiring this subsystem interrupts.
+   */
+  public Command commandIntake() {
+    return Commands.run(
+            () -> {
+              disableShooter();
+              intakeMotor.setVoltage(INTAKING_INTAKE_OUTPUT);
+              loaderMotor.set(INTAKING_LOADER_OUTPUT);
+            },
+            this)
+        .withName("Intake")
+        .finallyDo(interrupted -> {
+          intakeMotor.setVoltage(0.0);
+          loaderMotor.set(0.0);
+          if (spinUp50Requested) {
+            enableShooterAtSpeed(SHOOTER_TARGET_SPEED_SPINUP50_RPM);
+          } else {
+            disableShooter();
+          }
+        });
+  }
+
+  /**
+   * Shoot: spin up shooter using encoder control, then feed intake + loader.
+   * Loader is gated on shooter speed so balls only feed when near target RPM.
+   * When released, shooter only continues if the X-button idle spin-up is enabled.
+   */
   public Command commandLaunch() {
-    return commandSpeeds(LAUNCHING_IO_VOLTAGE, INTAKING_INTAKE_OUTPUT, LAUNCHING_LOADER_OUTPUT);
-  }
-
-  /** Launch fuel toward the target at 9 V (medium-power shot). */
-  public Command commandLaunchMedium() {
-    return commandSpeeds(LAUNCHING_IO_MEDIUM_VOLTAGE, INTAKING_INTAKE_OUTPUT, LAUNCHING_LOADER_OUTPUT);
+    return Commands.sequence(
+        // Spin up shooter first using encoder control.
+        this.run(() -> enableShooterAtSpeed(SHOOTER_TARGET_SPEED_INTAKE_RPM))
+            .withTimeout(INTAKE_SPIN_UP_SECONDS),
+        // Then run shooter at speed while feeding intake and loader.
+        this.run(
+            () -> {
+              enableShooterAtSpeed(SHOOTER_TARGET_SPEED_INTAKE_RPM);
+              intakeMotor.setVoltage(INTAKING_INTAKE_OUTPUT);
+              // Only feed balls once shooter is near target speed.
+              double current = getShooterSpeedRpm();
+              boolean atSpeed =
+                  current >= SHOOTER_TARGET_SPEED_INTAKE_RPM * SHOOTER_SPINUP_THRESHOLD_FRACTION;
+              loaderMotor.set(atSpeed ? LAUNCHING_LOADER_OUTPUT : 0.0);
+            })
+            .finallyDo(interrupted -> {
+              // Stop intake/loader when command ends; shooter only stays on if the
+              // X-button spin-up mode is enabled (persistent spin-up).
+              intakeMotor.setVoltage(0.0);
+              loaderMotor.set(0.0);
+              if (!spinUp50Requested) {
+                disableShooter();
+              }
+            }));
   }
 
   /** Eject: IO off; intake and loader run in reverse. */
@@ -155,15 +283,25 @@ public class IoSubsystem extends SubsystemBase {
 
   /** IO motor only at 50% (for X button toggle). */
   public Command commandIoSpinUp50() {
-    return commandSpeeds(IO_SPIN_UP_50_VOLTAGE, 0, 0);
+    return this.run(() -> enableShooterAtSpeed(SHOOTER_TARGET_SPEED_SPINUP50_RPM));
   }
 
   public Command commandMaxSpin() {
-    return commandSpeeds(12, 0, 0);
+    return this.run(() -> enableShooterAtSpeed(SHOOTER_TARGET_SPEED_INTAKE_RPM * 1.2));
   }
 
   /** Reverse flywheel and run loader (Y button). */
   public Command commandReverseFlywheelAndLoader() {
-    return commandSpeeds(-INTAKING_IO_VOLTAGE, 0, INTAKING_LOADER_OUTPUT);
+    // Reverse shooter uses open-loop for simplicity; does not use the speed
+    // controller because it is only for clearing jams.
+    return this.run(
+        () -> {
+          ioMotor.setVoltage(-SHOOTER_MAX_VOLTAGE / 2.0);
+          intakeMotor.setVoltage(0.0);
+          loaderMotor.set(INTAKING_LOADER_OUTPUT);
+        }).finallyDo(interrupted -> {
+          ioMotor.setVoltage(0.0);
+          loaderMotor.set(0.0);
+        });
   }
 }

@@ -12,7 +12,10 @@ import static frc.robot.Constants.OperatorConstants.*;
 
 import frc.robot.commands.AutoDrive;
 import frc.robot.commands.Drive;
+<<<<<<< HEAD
 // import static frc.robot.Constants.AutoConstants.*;
+=======
+>>>>>>> 45b5481
 
 import frc.robot.subsystems.CANDriveSubsystem;
 import frc.robot.subsystems.IoSubsystem;
@@ -71,8 +74,12 @@ public class RobotContainer {
     driveSubsystem.setDefaultCommand(new Drive(driveSubsystem, driverController));
     ioSubsystem.setDefaultCommand(ioSubsystem.commandIdle());
 
-    driverController.leftTrigger(TRIGGER_THRESHOLD).whileTrue(ioSubsystem.commandIntake());
-    driverController.rightTrigger(TRIGGER_THRESHOLD).whileTrue(ioSubsystem.commandLaunch());
+    // Left trigger SHOOTS: spin up shooter with encoder control and feed balls
+    // (loader gated on shooter speed) while allowing normal driving.
+    driverController.leftTrigger(TRIGGER_THRESHOLD).whileTrue(ioSubsystem.commandLaunch());
+
+    // Right trigger INTAKES: run intake + loader only (no shooter spin).
+    driverController.rightTrigger(TRIGGER_THRESHOLD).whileTrue(ioSubsystem.commandIntake());
     driverController.leftBumper().whileTrue(ioSubsystem.commandEject());
     driverController.x().onTrue(Commands.runOnce(ioSubsystem::toggleSpinUp50Requested));
     driverController.y().whileTrue(ioSubsystem.runBangBang());
