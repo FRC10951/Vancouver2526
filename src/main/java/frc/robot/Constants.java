@@ -70,8 +70,16 @@ public final class Constants {
 
     /** Intake motor voltage when feeding balls toward the shooter. */
     public static final double INTAKING_INTAKE_OUTPUT = -10;
-    /** Loader duty cycle (0–1) when feeding balls toward the shooter. */
-    public static final double INTAKING_LOADER_OUTPUT = 6.0 / 12.0;
+    /**
+     * Loader target voltage when feeding balls toward the shooter.
+     * Sign controls direction; use negative to invert.
+     */
+    public static final double LOADER_MOTOR_TARGET_VOLTAGE = -6.0;
+    /**
+     * Loader duty cycle (0–1) corresponding to {@link #LOADER_MOTOR_TARGET_VOLTAGE}
+     * on a 12 V bus.
+     */
+    public static final double INTAKING_LOADER_OUTPUT = LOADER_MOTOR_TARGET_VOLTAGE / 12.0;
 
     public static final double PREPARING_LOADER_OUTPUT = 0.0;
 

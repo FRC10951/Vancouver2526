@@ -11,9 +11,7 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import static frc.robot.Constants.OperatorConstants.*;
 
 import frc.robot.commands.AutoDrive;
-import frc.robot.commands.AutoDriveDistance;
 import frc.robot.commands.Drive;
-import static frc.robot.Constants.AutoConstants.*;
 
 import frc.robot.subsystems.CANDriveSubsystem;
 import frc.robot.subsystems.IoSubsystem;
@@ -72,15 +70,12 @@ public class RobotContainer {
     driveSubsystem.setDefaultCommand(new Drive(driveSubsystem, driverController));
     ioSubsystem.setDefaultCommand(ioSubsystem.commandIdle());
 
-    // Left trigger: shooting command that also wiggles the drivetrain while held.
-    driverController.leftTrigger(TRIGGER_THRESHOLD).whileTrue(
-        Commands.parallel(
-            ioSubsystem.commandIntake(),
-            driveSubsystem.commandIntakeWiggle(0.15, 0.2)));
+    // Left trigger SHOOTS: spin up shooter with encoder control and feed balls
+    // (loader gated on shooter speed) while allowing normal driving.
+    driverController.leftTrigger(TRIGGER_THRESHOLD).whileTrue(ioSubsystem.commandLaunch());
 
-    // Right trigger: toggle shooter on/off using encoder-based control.
-    driverController.rightTrigger(TRIGGER_THRESHOLD)
-        .onTrue(Commands.runOnce(ioSubsystem::toggleShooterEnabled));
+    // Right trigger INTAKES: run intake + loader only (no shooter spin).
+    driverController.rightTrigger(TRIGGER_THRESHOLD).whileTrue(ioSubsystem.commandIntake());
     driverController.leftBumper().whileTrue(ioSubsystem.commandEject());
     driverController.x().onTrue(Commands.runOnce(ioSubsystem::toggleSpinUp50Requested));
     driverController.y().whileTrue(ioSubsystem.commandReverseFlywheelAndLoader());
