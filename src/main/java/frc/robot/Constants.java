@@ -36,28 +36,52 @@ public final class Constants {
     public static final int INTAKE_MOTOR_CURRENT_LIMIT = 60;
     public static final int LOADER_MOTOR_CURRENT_LIMIT = 60;
 
-    /** IO flywheel voltage when intaking from the floor/storage. */
-    public static final double INTAKING_IO_VOLTAGE = 6;
-    /** Intake motor voltage when intaking. */
-    public static final double INTAKING_INTAKE_OUTPUT = -10;
-    /** Loader duty cycle (0–1) when intaking. */
-    public static final double INTAKING_LOADER_OUTPUT = 6.0 / 12.0;
+    // -----------------------------------------------------------------------
+    // Shooter / intake speed control (encoder-based)
+    // -----------------------------------------------------------------------
 
-    public static final double PREPARING_IO_VOLTAGE = -6;
-    public static final double PREPARING_LOADER_OUTPUT = 0.0;
+    /** Target shooter speed (RPM) for the main shooting/intake command. */
+    public static final double SHOOTER_TARGET_SPEED_INTAKE_RPM = 3000.0;
+    /** Target shooter speed (RPM) for the 50% spin-up toggle. */
+    public static final double SHOOTER_TARGET_SPEED_SPINUP50_RPM = 2000.0;
+    /** Target shooter speed (RPM) when using the right-trigger toggle. */
+    public static final double SHOOTER_TARGET_SPEED_TOGGLE_RPM = SHOOTER_TARGET_SPEED_INTAKE_RPM;
+
+    /** Proportional gain for shooter speed control (simple P loop). */
+    public static final double SHOOTER_KP = 0.003;
+    /**
+     * Fraction of target speed below which we apply max voltage to spin up quickly.
+     * For example, 0.8 means full voltage until 80% of target speed is reached.
+     */
+    public static final double SHOOTER_SPINUP_THRESHOLD_FRACTION = 0.8;
+
+    /** Maximum voltage the shooter is ever commanded to (absolute value). */
+    public static final double SHOOTER_MAX_VOLTAGE = 12.0;
 
     /**
-     * Flywheel (IO) voltage during launch; spin-up phase uses this before feeding
-     * loader.
+     * Nominal voltage used as a baseline during speed holding; P-control adjusts
+     * around this.
      */
-    public static final double LAUNCHING_IO_VOLTAGE = 0;
+    public static final double SHOOTER_HOLD_BASE_VOLTAGE = 7.0;
+
+    // -----------------------------------------------------------------------
+    // Intake / loader outputs (still open-loop on those motors)
+    // -----------------------------------------------------------------------
+
+    /** Intake motor voltage when feeding balls toward the shooter. */
+    public static final double INTAKING_INTAKE_OUTPUT = -10;
+    /** Loader duty cycle (0–1) when feeding balls toward the shooter. */
+    public static final double INTAKING_LOADER_OUTPUT = 6.0 / 12.0;
+
+    public static final double PREPARING_LOADER_OUTPUT = 0.0;
+
     /**
      * Loader duty cycle (0–1) for launching at fixed speed (opposite direction of
      * intake).
      */
     public static final double LAUNCHING_LOADER_OUTPUT = -INTAKING_LOADER_OUTPUT;
 
-    /** Delay (seconds) to spin up flywheel before feeding loader when launching. */
+    /** Delay (seconds) to spin up shooter before feeding loader when launching. */
     public static final double LAUNCH_SPIN_UP_SECONDS = 1.0;
     /**
      * Delay (seconds) to spin up IO flywheel before intake/loader when intaking.

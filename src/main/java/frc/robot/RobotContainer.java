@@ -14,7 +14,6 @@ import frc.robot.commands.AutoDrive;
 import frc.robot.commands.AutoDriveDistance;
 import frc.robot.commands.Drive;
 import static frc.robot.Constants.AutoConstants.*;
-import static frc.robot.Constants.IoConstants.INTAKING_IO_VOLTAGE;
 
 import frc.robot.subsystems.CANDriveSubsystem;
 import frc.robot.subsystems.IoSubsystem;
@@ -73,8 +72,15 @@ public class RobotContainer {
     driveSubsystem.setDefaultCommand(new Drive(driveSubsystem, driverController));
     ioSubsystem.setDefaultCommand(ioSubsystem.commandIdle());
 
-    driverController.leftTrigger(TRIGGER_THRESHOLD).whileTrue(ioSubsystem.commandIntake());
-    driverController.rightTrigger(TRIGGER_THRESHOLD).whileTrue(ioSubsystem.commandLaunch());
+    // Left trigger: shooting command that also wiggles the drivetrain while held.
+    driverController.leftTrigger(TRIGGER_THRESHOLD).whileTrue(
+        Commands.parallel(
+            ioSubsystem.commandIntake(),
+            driveSubsystem.commandIntakeWiggle(0.15, 0.2)));
+
+    // Right trigger: toggle shooter on/off using encoder-based control.
+    driverController.rightTrigger(TRIGGER_THRESHOLD)
+        .onTrue(Commands.runOnce(ioSubsystem::toggleShooterEnabled));
     driverController.leftBumper().whileTrue(ioSubsystem.commandEject());
     driverController.x().onTrue(Commands.runOnce(ioSubsystem::toggleSpinUp50Requested));
     driverController.y().whileTrue(ioSubsystem.commandReverseFlywheelAndLoader());
