@@ -40,8 +40,14 @@ public final class Constants {
     // Shooter / intake speed control (encoder-based)
     // -----------------------------------------------------------------------
 
-    /** Target shooter speed (RPM) for the main shooting/intake command. */
+    /** Base shooter speed (RPM) used for intake/prepare helpers. */
     public static final double SHOOTER_TARGET_SPEED_INTAKE_RPM = 2000.0;
+    /** Shooter speed (RPM) for normal launch (left trigger). */
+    public static final double SHOOTER_TARGET_SPEED_LAUNCH_RPM = 2600.0;
+    /** Shooter speed (RPM) for high-speed launch (B button). */
+    public static final double SHOOTER_TARGET_SPEED_HIGH_RPM = 3200.0;
+    /** Shooter speed (RPM) for ultra-speed launch (right bumper). */
+    public static final double SHOOTER_TARGET_SPEED_ULTRA_RPM = 3800.0;
     /** Target shooter speed (RPM) for the 50% spin-up toggle. */
     public static final double SHOOTER_TARGET_SPEED_SPINUP50_RPM = 1000.0;
     /** Target shooter speed (RPM) when using the right-trigger toggle. */

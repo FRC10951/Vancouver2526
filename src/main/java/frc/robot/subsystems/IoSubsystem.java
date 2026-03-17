@@ -251,22 +251,20 @@ public class IoSubsystem extends SubsystemBase {
   public Command commandLaunch() {
     return Commands.sequence(
         // Spin up shooter first using encoder control.
-        this.run(() -> enableShooterAtSpeed(SHOOTER_TARGET_SPEED_INTAKE_RPM))
+        this.run(() -> enableShooterAtSpeed(SHOOTER_TARGET_SPEED_LAUNCH_RPM))
             .withTimeout(INTAKE_SPIN_UP_SECONDS),
         // Then run shooter at speed while feeding intake and loader.
         this.run(
             () -> {
-              enableShooterAtSpeed(SHOOTER_TARGET_SPEED_INTAKE_RPM);
-              intakeMotor.setVoltage(INTAKING_INTAKE_OUTPUT);
+              enableShooterAtSpeed(SHOOTER_TARGET_SPEED_LAUNCH_RPM);
               // Only feed balls once shooter is near target speed.
               double current = getShooterSpeedRpm();
-              boolean atSpeed = current >= SHOOTER_TARGET_SPEED_INTAKE_RPM * SHOOTER_SPINUP_THRESHOLD_FRACTION;
+              boolean atSpeed = current >= SHOOTER_TARGET_SPEED_LAUNCH_RPM * SHOOTER_SPINUP_THRESHOLD_FRACTION;
               loaderMotor.set(atSpeed ? LAUNCHING_LOADER_OUTPUT : 0.0);
             })
             .finallyDo(interrupted -> {
-              // Stop intake/loader when command ends; shooter only stays on if the
+              // Stop loader when command ends; shooter only stays on if the
               // X-button spin-up mode is enabled (persistent spin-up).
-              intakeMotor.setVoltage(0.0);
               loaderMotor.set(0.0);
               if (!spinUp50Requested) {
                 disableShooter();
@@ -279,26 +277,63 @@ public class IoSubsystem extends SubsystemBase {
    * shooter RPM for a stronger shot.
    */
   public Command commandHighSpeedLaunch() {
-    final double highSpeedRpm = SHOOTER_TARGET_SPEED_INTAKE_RPM * 1.4;
+    final double highSpeedRpm = SHOOTER_TARGET_SPEED_HIGH_RPM;
     return Commands.sequence(
         this.run(() -> enableShooterAtSpeed(highSpeedRpm))
             .withTimeout(INTAKE_SPIN_UP_SECONDS),
         this.run(
             () -> {
               enableShooterAtSpeed(highSpeedRpm);
-              intakeMotor.setVoltage(INTAKING_INTAKE_OUTPUT);
               double current = getShooterSpeedRpm();
               boolean atSpeed =
                   current >= highSpeedRpm * SHOOTER_SPINUP_THRESHOLD_FRACTION;
               loaderMotor.set(atSpeed ? LAUNCHING_LOADER_OUTPUT : 0.0);
             })
             .finallyDo(interrupted -> {
-              intakeMotor.setVoltage(0.0);
               loaderMotor.set(0.0);
               if (!spinUp50Requested) {
                 disableShooter();
               }
             }));
+  }
+
+  /**
+   * Ultra-speed shoot: highest shooter RPM for long-range shots.
+   */
+  public Command commandUltraSpeedLaunch() {
+    final double ultraRpm = SHOOTER_TARGET_SPEED_ULTRA_RPM;
+    return Commands.sequence(
+        this.run(() -> enableShooterAtSpeed(ultraRpm))
+            .withTimeout(INTAKE_SPIN_UP_SECONDS),
+        this.run(
+            () -> {
+              enableShooterAtSpeed(ultraRpm);
+              double current = getShooterSpeedRpm();
+              boolean atSpeed =
+                  current >= ultraRpm * SHOOTER_SPINUP_THRESHOLD_FRACTION;
+              loaderMotor.set(atSpeed ? LAUNCHING_LOADER_OUTPUT : 0.0);
+            })
+            .finallyDo(interrupted -> {
+              loaderMotor.set(0.0);
+              if (!spinUp50Requested) {
+                disableShooter();
+              }
+            }));
+  }
+
+  /**
+   * Intake pulsing helper: 0.5 s on, 0.1 s off, repeated until the command is
+   * interrupted.
+   */
+  public Command commandIntakePulse() {
+    return Commands.repeatingSequence(
+            this.run(
+                    () -> intakeMotor.setVoltage(INTAKING_INTAKE_OUTPUT))
+                .withTimeout(0.5),
+            this.run(
+                    () -> intakeMotor.setVoltage(0.0))
+                .withTimeout(0.1))
+        .finallyDo(interrupted -> intakeMotor.setVoltage(0.0));
   }
 
   /** Eject: IO off; intake and loader run in reverse. */
