@@ -48,11 +48,11 @@ public final class Constants {
     /** Base shooter speed (RPM) used for intake/prepare helpers. */
     public static final double SHOOTER_TARGET_SPEED_INTAKE_RPM = 2000.0;
     /** Shooter speed (RPM) for normal launch (left trigger). */
-    public static final double SHOOTER_TARGET_SPEED_LAUNCH_RPM = 1500.0;
+    public static final double SHOOTER_TARGET_SPEED_LAUNCH_RPM = 1500.0; // hub
     /** Shooter speed (RPM) for high-speed launch (B button). */
-    public static final double SHOOTER_TARGET_SPEED_HIGH_RPM = 2500.0;
+    public static final double SHOOTER_TARGET_SPEED_HIGH_RPM = 2500.0; // 2m
     /** Shooter speed (RPM) for ultra-speed launch (right bumper). */
-    public static final double SHOOTER_TARGET_SPEED_ULTRA_RPM = 3800.0;
+    public static final double SHOOTER_TARGET_SPEED_ULTRA_RPM = 3800.0; // trench
     /** Target shooter speed (RPM) for the 50% spin-up toggle. */
     public static final double SHOOTER_TARGET_SPEED_SPINUP50_RPM = 1000.0;
     /** Target shooter speed (RPM) when using the right-trigger toggle. */
@@ -64,7 +64,7 @@ public final class Constants {
      * Fraction of target speed below which we apply max voltage to spin up quickly.
      * For example, 0.8 means full voltage until 80% of target speed is reached.
      */
-    public static final double SHOOTER_SPINUP_THRESHOLD_FRACTION = 0.8;
+    public static final double SHOOTER_SPINUP_THRESHOLD_FRACTION = 0.9;
 
     /** Maximum voltage the shooter is ever commanded to (absolute value). */
     public static final double SHOOTER_MAX_VOLTAGE = 12.0;
@@ -115,7 +115,7 @@ public final class Constants {
     /** Duration (seconds) the intake is ON during a pulse cycle. */
     public static final double INTAKE_PULSE_ON_SECONDS = 0.5;
     /** Duration (seconds) the intake is OFF during a pulse cycle. */
-    public static final double INTAKE_PULSE_OFF_SECONDS = 0.4;
+    public static final double INTAKE_PULSE_OFF_SECONDS = 0.2;
 
     /**
      * Logical grouping of CAN IDs for the IO / intake / loader motors. This

@@ -223,13 +223,24 @@ public class IoSubsystem extends SubsystemBase {
    * interrupts.
    */
   public Command commandIntake() {
+    edu.wpi.first.wpilibj.Timer timer = new edu.wpi.first.wpilibj.Timer();
     return Commands.run(
         () -> {
           disableShooter();
-          intakeMotor.setVoltage(INTAKING_INTAKE_OUTPUT);
           loaderMotor.set(INTAKING_LOADER_OUTPUT);
+          
+          double time = timer.get();
+          double cycleTime = INTAKE_PULSE_ON_SECONDS + INTAKE_PULSE_OFF_SECONDS;
+          double currentCycleTime = time % cycleTime;
+          
+          if (currentCycleTime < INTAKE_PULSE_ON_SECONDS) {
+            intakeMotor.setVoltage(INTAKING_INTAKE_OUTPUT);
+          } else {
+            intakeMotor.setVoltage(0.0);
+          }
         },
         this)
+        .beforeStarting(timer::restart)
         .withName("Intake")
         .finallyDo(interrupted -> {
           intakeMotor.setVoltage(0.0);
