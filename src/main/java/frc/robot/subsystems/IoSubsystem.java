@@ -15,19 +15,19 @@ import static frc.robot.Constants.IoConstants.*;
 import frc.robot.Constants.IoConstants.IoCanIdGroup;
 
 /**
- * Fuel system: IO motor, intake, and loader (CAN IDs from
+   * Fuel system: Flywheel motor, intake, and loader (CAN IDs from
  * Constants.IoConstants), all
  * brushless SPARK MAX.
  */
 public class IoSubsystem extends SubsystemBase {
-  private final SparkMax ioMotor;
-  private final RelativeEncoder ioEncoder;
+  private final SparkMax flywheelMotor;
+  private final RelativeEncoder flywheelEncoder;
   /** When true, idle state or toggle modes keep shooter spinning. */
   private boolean shooterEnabled = false;
   /** Target shooter speed in RPM for encoder-based control. */
   private double shooterTargetSpeedRpm = 0.0;
   /**
-   * When true, idle state runs IO at 50% equivalent speed (survives
+   * When true, idle state runs flywheel at 50% equivalent speed (survives
    * intake/launch).
    */
   private boolean spinUp50Requested = false;
@@ -39,12 +39,12 @@ public class IoSubsystem extends SubsystemBase {
   }
 
   public IoSubsystem(IoCanIdGroup canIds) {
-    ioMotor = new SparkMax(canIds.ioMotorId, MotorType.kBrushless);
-    SparkMaxConfig ioConfig = new SparkMaxConfig();
-    ioConfig.smartCurrentLimit(IO_MOTOR_CURRENT_LIMIT);
-    ioConfig.voltageCompensation(12.0);
-    ioMotor.configure(ioConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    ioEncoder = ioMotor.getEncoder();
+    flywheelMotor = new SparkMax(canIds.flywheelMotorId, MotorType.kBrushless);
+    SparkMaxConfig flywheelConfig = new SparkMaxConfig();
+    flywheelConfig.smartCurrentLimit(FLYWHEEL_MOTOR_CURRENT_LIMIT);
+    flywheelConfig.voltageCompensation(12.0);
+    flywheelMotor.configure(flywheelConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    flywheelEncoder = flywheelMotor.getEncoder();
 
     intakeMotor = new SparkMax(canIds.intakeMotorId, MotorType.kBrushless);
     SparkMaxConfig intakeConfig = new SparkMaxConfig();
@@ -63,16 +63,16 @@ public class IoSubsystem extends SubsystemBase {
     updateShooterControl();
   }
 
-  /** Set IO motor by voltage and loader by duty cycle (0–1). */
-  public void setSpeeds(double ioVoltage, double intakeOutput, double loaderOutput) {
-    ioMotor.setVoltage(ioVoltage);
+  /** Set flywheel motor by voltage and loader by duty cycle (0–1). */
+  public void setSpeeds(double flywheelVoltage, double intakeOutput, double loaderOutput) {
+    flywheelMotor.setVoltage(flywheelVoltage);
     intakeMotor.setVoltage(intakeOutput);
     loaderMotor.set(loaderOutput);
   }
 
-  /** Returns the current shooter (IO motor) speed in RPM. */
+  /** Returns the current shooter (flywheel motor) speed in RPM. */
   public double getShooterSpeedRpm() {
-    return ioEncoder.getVelocity();
+    return flywheelEncoder.getVelocity();
   }
 
   /** Enables the shooter at the given target speed (RPM). */
@@ -85,7 +85,7 @@ public class IoSubsystem extends SubsystemBase {
   public void disableShooter() {
     shooterEnabled = false;
     shooterTargetSpeedRpm = 0.0;
-    ioMotor.setVoltage(0.0);
+    flywheelMotor.setVoltage(0.0);
   }
 
   public void stop() {
@@ -127,7 +127,7 @@ public class IoSubsystem extends SubsystemBase {
    */
   private void updateShooterControl() {
     if (!shooterEnabled || shooterTargetSpeedRpm <= 0.0) {
-      ioMotor.setVoltage(0.0);
+      flywheelMotor.setVoltage(0.0);
       return;
     }
 
@@ -137,7 +137,7 @@ public class IoSubsystem extends SubsystemBase {
     // Spin-up region: below threshold, use max voltage.
     if (currentSpeedRpm < target * SHOOTER_SPINUP_THRESHOLD_FRACTION) {
       double commanded = Math.copySign(SHOOTER_MAX_VOLTAGE, target);
-      ioMotor.setVoltage(commanded);
+      flywheelMotor.setVoltage(commanded);
       return;
     }
 
@@ -152,16 +152,16 @@ public class IoSubsystem extends SubsystemBase {
       commanded = -SHOOTER_MAX_VOLTAGE;
     }
 
-    ioMotor.setVoltage(commanded);
+    flywheelMotor.setVoltage(commanded);
   }
 
-  public Command commandSpeeds(double ioVoltage, double intakeOutput, double loaderOutput) {
+  public Command commandSpeeds(double flywheelVoltage, double intakeOutput, double loaderOutput) {
     return startEnd(
         () -> {
-          // For legacy callers that still pass an IO voltage, treat that as enabling
-          // shooter at the intake target speed; IO voltage itself is now controlled
+          // For legacy callers that still pass a flywheel voltage, treat that as enabling
+          // shooter at the intake target speed; flywheel voltage itself is now controlled
           // by the encoder loop.
-          if (ioVoltage != 0.0) {
+          if (flywheelVoltage != 0.0) {
             enableShooterAtSpeed(SHOOTER_TARGET_SPEED_INTAKE_RPM);
           }
           intakeMotor.setVoltage(intakeOutput);
@@ -354,14 +354,14 @@ public class IoSubsystem extends SubsystemBase {
         .finallyDo(interrupted -> intakeMotor.setVoltage(0.0));
   }
 
-  /** Eject: IO off; intake and loader run in reverse. */
+  /** Eject: flywheel off; intake and loader run in reverse. */
   public Command commandEject() {
     // Reverse intake and loader relative to normal intaking so game pieces exit.
     return commandSpeeds(0, -INTAKING_INTAKE_OUTPUT, -INTAKING_LOADER_OUTPUT);
   }
 
-  /** IO motor only at 50% (for X button toggle). */
-  public Command commandIoSpinUp50() {
+  /** Flywheel motor only at 50% (for X button toggle). */
+  public Command commandFlywheelSpinUp50() {
     return this.run(() -> enableShooterAtSpeed(SHOOTER_TARGET_SPEED_SPINUP50_RPM));
   }
 
@@ -375,11 +375,11 @@ public class IoSubsystem extends SubsystemBase {
     // controller because it is only for clearing jams.
     return this.run(
         () -> {
-          ioMotor.setVoltage(-SHOOTER_MAX_VOLTAGE / 2.0);
+          flywheelMotor.setVoltage(-SHOOTER_MAX_VOLTAGE / 2.0);
           intakeMotor.setVoltage(0.0);
           loaderMotor.set(INTAKING_LOADER_OUTPUT);
         }).finallyDo(interrupted -> {
-          ioMotor.setVoltage(0.0);
+          flywheelMotor.setVoltage(0.0);
           loaderMotor.set(0.0);
         });
   }

@@ -5,7 +5,7 @@
 WPILib command-based robot code for the **2026 KitBot** (FRC). This robot has:
 
 - A **4-motor tank drivetrain** (CIMs on SPARK MAX, brushed) driven with **arcade drive**.
-- A **fuel system** with three SPARK MAX motors defined in constants: **intake** (CAN ID 12), **IO/flywheel** (ID 9), and **loader/directional wheel** (ID 19). The `IoSubsystem` currently uses IDs 9 and 19 for intake and launch; the intake motor (12) is in constants and ready for when it is wired into the subsystem.
+- A **fuel system** with three SPARK MAX motors defined in constants: **intake** (CAN ID 12), **flywheel** (ID 9), and **loader/directional wheel** (ID 19). The `IoSubsystem` currently uses IDs 9 and 19 for intake and launch; the intake motor (12) is in constants and ready for when it is wired into the subsystem.
 - A **single driver Xbox controller** (USB port 0) for drive and fuel; operator controller port is defined but not used in bindings.
 - **Autonomous** options: Do Nothing, Drive Forward 2s, turn left 2s, and “drive back & shoot preload” (left or right).
 
@@ -21,8 +21,8 @@ Arcade drive runs by default. Triggers control the fuel system.
 |--------|----------|
 | **Left stick (Y)** | Drive forward/back (arcade). Scaling from `OperatorConstants.DRIVE_SCALING`. |
 | **Right stick (X)** | Rotate left/right (arcade). Scaling from `OperatorConstants.ROTATION_SCALING`. |
-| **LT** (Left trigger) | **Intake** — hold to run `IoSubsystem.commandIntake()` (IO motor 9 + loader 19 pull fuel in). |
-| **RT** (Right trigger) | **Launch** — hold to run `IoSubsystem.commandLaunch()` (IO motor 9 + loader 19 launch). |
+| **LT** (Left trigger) | **Intake** — hold to run `IoSubsystem.commandIntake()` (flywheel motor 9 + loader 19 pull fuel in). |
+| **RT** (Right trigger) | **Launch** — hold to run `IoSubsystem.commandLaunch()` (flywheel motor 9 + loader 19 launch). |
 | **B** | **Reset encoders** — resets drivetrain encoders on `CANDriveSubsystem`. |
 
 There is no operator controller in use; only the driver controller has bindings. Other fuel commands exist in code (`commandEject`, `commandPrepare`, `commandStop`) but are not bound to buttons.
@@ -48,11 +48,11 @@ At startup, the robot prints a CAN ID list to the console and publishes it to Sm
 
 | CAN ID | Function | Role in code | Notes |
 |--------|----------|--------------|--------|
-| 9 | IO / flywheel | `IoConstants.IO_MOTOR_ID` | Used by `IoSubsystem` for intake and launch (voltage control). |
+| 9 | Flywheel | `IoConstants.FLYWHEEL_MOTOR_ID` | Used by `IoSubsystem` for intake and launch (voltage control). |
 | 12 | **Intake motor** | `IoConstants.INTAKE_MOTOR_ID` | Pulls fuel from floor or storage. **Anti-clockwise = intake; clockwise = spit out.** Defined in constants; not yet instantiated in `IoSubsystem` (for when hardware is wired). |
 | 19 | Loader / directional wheel | `IoConstants.LOADER_MOTOR_ID` | Used by `IoSubsystem` for intake and launch (duty cycle 0–1). |
 
-- `IoSubsystem` currently creates only **two** SPARK MAX controllers: **9** (IO motor) and **19** (loader). Both are **brushed**. Intake motor **12** is in `Constants` and in the printed CAN ID list; add it to `IoSubsystem` when the intake motor is on the bus.
+- `IoSubsystem` currently creates only **two** SPARK MAX controllers: **9** (flywheel motor) and **19** (loader). Both are **brushed**. Intake motor **12** is in `Constants` and in the printed CAN ID list; add it to `IoSubsystem` when the intake motor is on the bus.
 
 ---
 
@@ -76,15 +76,15 @@ Used by `CANDriveSubsystem` and the `Drive` / `AutoDrive` commands.
 
 | Constant | Type | Meaning |
 |----------|------|---------|
-| `IO_MOTOR_ID` | int | 9 – IO / flywheel motor. |
+| `FLYWHEEL_MOTOR_ID` | int | 9 – Flywheel motor. |
 | `INTAKE_MOTOR_ID` | int | 12 – intake motor (pulls fuel from floor/storage; anti-clockwise = intake, clockwise = spit out). |
 | `LOADER_MOTOR_ID` | int | 19 – loader / directional wheel. |
-| `IO_MOTOR_CURRENT_LIMIT` | int | Current limit (amps) for motor 9. |
+| `FLYWHEEL_MOTOR_CURRENT_LIMIT` | int | Current limit (amps) for motor 9. |
 | `LOADER_MOTOR_CURRENT_LIMIT` | int | Current limit (amps) for motor 19. |
-| `INTAKING_IO_VOLTAGE` | double | IO motor voltage during intake. |
+| `INTAKING_IO_VOLTAGE` | double | flywheel motor voltage during intake. |
 | `INTAKING_LOADER_OUTPUT` | double | Loader duty cycle (0–1) during intake. |
 | `PREPARING_IO_VOLTAGE` / `PREPARING_LOADER_OUTPUT` | double | Optional “prepare” preset (not bound to a button). |
-| `LAUNCHING_IO_VOLTAGE` | double | IO motor voltage during launch. |
+| `LAUNCHING_IO_VOLTAGE` | double | flywheel motor voltage during launch. |
 | `LAUNCHING_LOADER_OUTPUT` | double | Loader duty cycle (0–1) during launch. |
 
 ### `OperatorConstants`
@@ -113,7 +113,7 @@ Returns a formatted string of all CAN IDs (drivetrain + IO, intake, loader). Cal
 
 ### `IoSubsystem`
 
-- Builds **two** brushed SPARK MAX: `IO_MOTOR_ID` (9), `LOADER_MOTOR_ID` (19). Intake (12) is in constants only.
+- Builds **two** brushed SPARK MAX: `FLYWHEEL_MOTOR_ID` (9), `LOADER_MOTOR_ID` (19). Intake (12) is in constants only.
 - `setSpeeds(ioVoltage, loaderOutput)` — IO by voltage, loader by duty cycle.
 - Commands: `commandIntake()`, `commandLaunch()`, `commandStop()`, `commandEject()`, `commandPrepare()`.
 - **Default command:** `commandStop()` so fuel motors are off unless a command runs.

@@ -45,13 +45,13 @@ public class RobotContainer {
     autoChooser.addOption("(untested) Drive back & shoot preload left",
         new AutoDrive(driveSubsystem, -0.5, 0.0).withTimeout(2.0)
             .andThen(new AutoDrive(driveSubsystem, 0, 0.1).withTimeout(2.0))
-            .andThen(ioSubsystem.commandLaunch().withTimeout(1.0))
+            .andThen(createShootingSequence(ioSubsystem.commandLaunch()).withTimeout(1.0))
             .andThen(Commands.none()));
 
     autoChooser.addOption("(untested) Drive back & shoot preload right",
         new AutoDrive(driveSubsystem, -0.5, 0.0).withTimeout(2.0)
             .andThen(new AutoDrive(driveSubsystem, 0, -0.1).withTimeout(2.0))
-            .andThen(ioSubsystem.commandLaunch().withTimeout(1.0))
+            .andThen(createShootingSequence(ioSubsystem.commandLaunch()).withTimeout(1.0))
             .andThen(Commands.none()));
   }
 
@@ -67,6 +67,17 @@ public class RobotContainer {
     return operatorController;
   }
 
+  /**
+   * Helper to wrap any launch command with the required intake pulsing and drivetrain wiggle.
+   */
+  private Command createShootingSequence(Command launchCommand) {
+    return Commands.parallel(
+        launchCommand,
+        ioSubsystem.commandIntakePulse(),
+        driveSubsystem.commandIntakeWiggle(INTAKE_WIGGLE_SPEED, INTAKE_WIGGLE_HALF_PERIOD)
+    );
+  }
+
   private void configureBindings() {
     driveSubsystem.setDefaultCommand(new Drive(driveSubsystem, driverController));
     ioSubsystem.setDefaultCommand(ioSubsystem.commandIdle());
@@ -74,9 +85,7 @@ public class RobotContainer {
     // Left trigger SHOOTS: spin up shooter with encoder control and feed balls
     // (loader gated on shooter speed) while allowing normal driving.
     driverController.leftTrigger(TRIGGER_THRESHOLD).whileTrue(
-        ioSubsystem.commandLaunch()
-            .alongWith(ioSubsystem.commandIntakePulse())
-            .alongWith(driveSubsystem.commandIntakeWiggle(INTAKE_WIGGLE_SPEED, INTAKE_WIGGLE_HALF_PERIOD)));
+        createShootingSequence(ioSubsystem.commandLaunch()));
 
     // Right trigger INTAKES: run intake + loader only (no shooter spin).
     driverController.rightTrigger(TRIGGER_THRESHOLD).whileTrue(ioSubsystem.commandIntake());
@@ -85,14 +94,10 @@ public class RobotContainer {
     driverController.y().whileTrue(ioSubsystem.commandReverseFlywheelAndLoader());
     // B button: high-speed shoot with automatic forward/backward wiggle.
     driverController.b().whileTrue(
-        ioSubsystem.commandHighSpeedLaunch()
-            .alongWith(ioSubsystem.commandIntakePulse())
-            .alongWith(driveSubsystem.commandIntakeWiggle(INTAKE_WIGGLE_SPEED, INTAKE_WIGGLE_HALF_PERIOD)));
+        createShootingSequence(ioSubsystem.commandHighSpeedLaunch()));
     // Right bumper: ultra-speed shoot with same intake pulsing + wiggle.
     driverController.rightBumper().whileTrue(
-        ioSubsystem.commandUltraSpeedLaunch()
-            .alongWith(ioSubsystem.commandIntakePulse())
-            .alongWith(driveSubsystem.commandIntakeWiggle(INTAKE_WIGGLE_SPEED, INTAKE_WIGGLE_HALF_PERIOD)));
+        createShootingSequence(ioSubsystem.commandUltraSpeedLaunch()));
     driverController.a().whileTrue(ioSubsystem.commandMaxSpin());
   }
 
