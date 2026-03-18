@@ -326,13 +326,20 @@ public class IoSubsystem extends SubsystemBase {
    * Uses INTAKE_PULSE_ON_SECONDS and INTAKE_PULSE_OFF_SECONDS from Constants.
    */
   public Command commandIntakePulse() {
-    return Commands.repeatingSequence(
-            Commands.run(
-                    () -> intakeMotor.setVoltage(INTAKING_INTAKE_OUTPUT))
-                .withTimeout(INTAKE_PULSE_ON_SECONDS),
-            Commands.run(
-                    () -> intakeMotor.setVoltage(0.0))
-                .withTimeout(INTAKE_PULSE_OFF_SECONDS))
+    edu.wpi.first.wpilibj.Timer timer = new edu.wpi.first.wpilibj.Timer();
+    return Commands.run(
+        () -> {
+          double time = timer.get();
+          double cycleTime = INTAKE_PULSE_ON_SECONDS + INTAKE_PULSE_OFF_SECONDS;
+          double currentCycleTime = time % cycleTime;
+          
+          if (currentCycleTime < INTAKE_PULSE_ON_SECONDS) {
+            intakeMotor.setVoltage(INTAKING_INTAKE_OUTPUT);
+          } else {
+            intakeMotor.setVoltage(0.0);
+          }
+        })
+        .beforeStarting(timer::restart)
         .finallyDo(interrupted -> intakeMotor.setVoltage(0.0));
   }
 

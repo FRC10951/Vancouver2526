@@ -115,7 +115,7 @@ public final class Constants {
     /** Duration (seconds) the intake is ON during a pulse cycle. */
     public static final double INTAKE_PULSE_ON_SECONDS = 0.5;
     /** Duration (seconds) the intake is OFF during a pulse cycle. */
-    public static final double INTAKE_PULSE_OFF_SECONDS = 0.2;
+    public static final double INTAKE_PULSE_OFF_SECONDS = 0.4;
 
     /**
      * Logical grouping of CAN IDs for the IO / intake / loader motors. This
