@@ -11,13 +11,11 @@ import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
-import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import java.util.function.DoubleSupplier;
 import static frc.robot.Constants.DriveConstants.*;
 
 /**
@@ -192,53 +190,16 @@ public class CANDriveSubsystem extends SubsystemBase {
 
   /**
    * Small fast back-and-forth wiggle motion, used while the intake/shooter
-   * command is active. Runs until interrupted. Stops wiggling and allows
-   * normal driving if joystick input is provided.
+   * command is active. Runs until interrupted.
    *
    * @param wiggleSpeed       forward/backward speed [-1, 1], small magnitude
    * @param halfPeriodSeconds time for each half of the wiggle cycle
-   * @param forwardSupplier   Supplier for driver forward/backward joystick input
-   * @param rotationSupplier  Supplier for driver rotation joystick input
    */
-  public Command commandIntakeWiggle(double wiggleSpeed, double halfPeriodSeconds, DoubleSupplier forwardSupplier, DoubleSupplier rotationSupplier) {
-    return new Command() {
-      private final Timer timer = new Timer();
-      private boolean isForward = true;
-
-      @Override
-      public void initialize() {
-        timer.restart();
-        isForward = true;
-      }
-
-      @Override
-      public void execute() {
-        double fwd = forwardSupplier.getAsDouble();
-        double rot = rotationSupplier.getAsDouble();
-
-        // If driver is providing input, use driver input instead of wiggling
-        if (Math.abs(fwd) > 0 || Math.abs(rot) > 0) {
-          driveArcade(fwd, rot);
-          timer.restart(); // Reset wiggle timer so it starts cleanly when joystick is released
-        } else {
-          // Otherwise, wiggle
-          if (timer.hasElapsed(halfPeriodSeconds)) {
-            isForward = !isForward;
-            timer.restart();
-          }
-          driveArcade(isForward ? wiggleSpeed : -wiggleSpeed, 0);
-        }
-      }
-
-      @Override
-      public void end(boolean interrupted) {
-        stop();
-      }
-
-      @Override
-      public java.util.Set<edu.wpi.first.wpilibj2.command.Subsystem> getRequirements() {
-        return java.util.Set.of(CANDriveSubsystem.this);
-      }
-    };
+  public Command commandIntakeWiggle(double wiggleSpeed, double halfPeriodSeconds) {
+    Command forward = this.run(() -> driveArcade(wiggleSpeed, 0)).withTimeout(halfPeriodSeconds);
+    Command backward = this.run(() -> driveArcade(-wiggleSpeed, 0)).withTimeout(halfPeriodSeconds);
+    return Commands.sequence(forward, backward)
+        .repeatedly()
+        .finallyDo(interrupted -> stop());
   }
 }

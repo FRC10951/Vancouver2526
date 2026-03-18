@@ -4,7 +4,6 @@
 
 package frc.robot;
 
-import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
@@ -77,9 +76,7 @@ public class RobotContainer {
     driverController.leftTrigger(TRIGGER_THRESHOLD).whileTrue(
         ioSubsystem.commandLaunch()
             .alongWith(ioSubsystem.commandIntakePulse())
-            .alongWith(driveSubsystem.commandIntakeWiggle(INTAKE_WIGGLE_SPEED, INTAKE_WIGGLE_HALF_PERIOD_SECONDS,
-                () -> MathUtil.applyDeadband(-driverController.getLeftY(), DRIVE_DEADBAND) * DRIVE_SCALING,
-                () -> MathUtil.applyDeadband(-driverController.getRightX(), DRIVE_DEADBAND) * ROTATION_SCALING)));
+            .alongWith(driveSubsystem.commandIntakeWiggle(INTAKE_WIGGLE_SPEED, INTAKE_WIGGLE_HALF_PERIOD)));
 
     // Right trigger INTAKES: run intake + loader only (no shooter spin).
     driverController.rightTrigger(TRIGGER_THRESHOLD).whileTrue(ioSubsystem.commandIntake());
@@ -90,16 +87,12 @@ public class RobotContainer {
     driverController.b().whileTrue(
         ioSubsystem.commandHighSpeedLaunch()
             .alongWith(ioSubsystem.commandIntakePulse())
-            .alongWith(driveSubsystem.commandIntakeWiggle(INTAKE_WIGGLE_SPEED, INTAKE_WIGGLE_HALF_PERIOD_SECONDS,
-                () -> MathUtil.applyDeadband(-driverController.getLeftY(), DRIVE_DEADBAND) * DRIVE_SCALING,
-                () -> MathUtil.applyDeadband(-driverController.getRightX(), DRIVE_DEADBAND) * ROTATION_SCALING)));
+            .alongWith(driveSubsystem.commandIntakeWiggle(INTAKE_WIGGLE_SPEED, INTAKE_WIGGLE_HALF_PERIOD)));
     // Right bumper: ultra-speed shoot with same intake pulsing + wiggle.
     driverController.rightBumper().whileTrue(
         ioSubsystem.commandUltraSpeedLaunch()
             .alongWith(ioSubsystem.commandIntakePulse())
-            .alongWith(driveSubsystem.commandIntakeWiggle(INTAKE_WIGGLE_SPEED, INTAKE_WIGGLE_HALF_PERIOD_SECONDS,
-                () -> MathUtil.applyDeadband(-driverController.getLeftY(), DRIVE_DEADBAND) * DRIVE_SCALING,
-                () -> MathUtil.applyDeadband(-driverController.getRightX(), DRIVE_DEADBAND) * ROTATION_SCALING)));
+            .alongWith(driveSubsystem.commandIntakeWiggle(INTAKE_WIGGLE_SPEED, INTAKE_WIGGLE_HALF_PERIOD)));
     driverController.a().whileTrue(ioSubsystem.commandMaxSpin());
   }
 

@@ -21,6 +21,11 @@ public final class Constants {
     public static final double WHEEL_DIAMETER_METERS = 0.1524;
     /** Gear ratio motor-to-wheel (e.g. 10.71 for KitBot). */
     public static final double GEAR_RATIO = 10.71;
+
+    /** Speed of the back-and-forth wiggle motion [0, 1]. */
+    public static final double INTAKE_WIGGLE_SPEED = 0.6;
+    /** Half-period duration (seconds) of the wiggle motion. */
+    public static final double INTAKE_WIGGLE_HALF_PERIOD = 0.1;
   }
 
   public static final class IoConstants {
@@ -43,7 +48,7 @@ public final class Constants {
     /** Base shooter speed (RPM) used for intake/prepare helpers. */
     public static final double SHOOTER_TARGET_SPEED_INTAKE_RPM = 2000.0;
     /** Shooter speed (RPM) for normal launch (left trigger). */
-    public static final double SHOOTER_TARGET_SPEED_LAUNCH_RPM = 1200.0;
+    public static final double SHOOTER_TARGET_SPEED_LAUNCH_RPM = 1500.0;
     /** Shooter speed (RPM) for high-speed launch (B button). */
     public static final double SHOOTER_TARGET_SPEED_HIGH_RPM = 2500.0;
     /** Shooter speed (RPM) for ultra-speed launch (right bumper). */
@@ -106,6 +111,11 @@ public final class Constants {
      * IO motor voltage for "spin up 50%" toggle (X button). 50% of typical 12 V.
      */
     public static final double IO_SPIN_UP_50_VOLTAGE = 6.0;
+
+    /** Duration (seconds) the intake is ON during a pulse cycle. */
+    public static final double INTAKE_PULSE_ON_SECONDS = 0.5;
+    /** Duration (seconds) the intake is OFF during a pulse cycle. */
+    public static final double INTAKE_PULSE_OFF_SECONDS = 0.2;
 
     /**
      * Logical grouping of CAN IDs for the IO / intake / loader motors. This

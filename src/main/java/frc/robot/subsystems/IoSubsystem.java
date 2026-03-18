@@ -322,17 +322,17 @@ public class IoSubsystem extends SubsystemBase {
   }
 
   /**
-   * Intake pulsing helper: 0.5 s on, 0.1 s off, repeated until the command is
-   * interrupted.
+   * Intake pulsing helper: repeated until the command is interrupted.
+   * Uses INTAKE_PULSE_ON_SECONDS and INTAKE_PULSE_OFF_SECONDS from Constants.
    */
   public Command commandIntakePulse() {
     return Commands.repeatingSequence(
-            this.run(
+            Commands.run(
                     () -> intakeMotor.setVoltage(INTAKING_INTAKE_OUTPUT))
-                .withTimeout(0.5),
-            this.run(
+                .withTimeout(INTAKE_PULSE_ON_SECONDS),
+            Commands.run(
                     () -> intakeMotor.setVoltage(0.0))
-                .withTimeout(0.1))
+                .withTimeout(INTAKE_PULSE_OFF_SECONDS))
         .finallyDo(interrupted -> intakeMotor.setVoltage(0.0));
   }
 
