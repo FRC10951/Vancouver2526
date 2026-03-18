@@ -68,14 +68,14 @@ public class RobotContainer {
   }
 
   /**
-   * Helper to wrap any launch command with the required intake pulsing and drivetrain wiggle.
+   * Helper to wrap any launch command with the required intake pulsing and
+   * drivetrain wiggle.
    */
   private Command createShootingSequence(Command launchCommand) {
     return Commands.parallel(
         launchCommand,
         ioSubsystem.commandIntakePulse(),
-        driveSubsystem.commandIntakeWiggle(INTAKE_WIGGLE_SPEED, INTAKE_WIGGLE_HALF_PERIOD)
-    );
+        driveSubsystem.commandIntakeWiggle(INTAKE_WIGGLE_SPEED, INTAKE_WIGGLE_HALF_PERIOD));
   }
 
   private void configureBindings() {
@@ -108,11 +108,35 @@ public class RobotContainer {
    * for your shooter.
    */
   public Command autonomousCommand() {
+    return Commands.sequence(
 
-    Command run = new AutoDrive(driveSubsystem, 0.5, 0.0).withTimeout(1.0);
-    Command spin = ioSubsystem.commandIntakeAuton().withTimeout(7.0);
-    return Commands.sequence(spin, run);
+        // Shoot for three seccond
+        ioSubsystem.commandLaunch().withTimeout(3.0),
+        // Go forward 0.5 meters (0.5 speed * 1.0s = 0.5m)
+        new AutoDrive(driveSubsystem, 0.5, 0.0).withTimeout(1.0),
 
+        // Turn 90 degrees to the right
+        new AutoDrive(driveSubsystem, 0.0, 0.3).withTimeout(2.0),
+
+        // Go forward 1.91 meters (0.5 speed * 3.82s = ~1.91m)
+        new AutoDrive(driveSubsystem, 0.5, 0.0).withTimeout(3.82),
+
+        // Turn 90 degrees to the left
+        new AutoDrive(driveSubsystem, 0.0, -0.3).withTimeout(2.0),
+
+        // Turn on intake while driving! (Use race so it stops intaking when it finishes
+        // driving)
+        Commands.race(
+            ioSubsystem.commandIntake(),
+            Commands.sequence(
+                // Drive forward 2.8 meters (0.5 speed * 5.6s = ~2.8m)
+                new AutoDrive(driveSubsystem, 0.5, 0.0).withTimeout(5.6),
+
+                // Turn 45 degrees
+                new AutoDrive(driveSubsystem, 0.0, 0.3).withTimeout(1.0))),
+
+        // Shoot for 5 seconds
+        ioSubsystem.commandLaunch().withTimeout(5.0));
   }
 
   /** Returns the autonomous command selected on the dashboard. */

@@ -56,7 +56,7 @@ public final class Constants {
     // -----------------------------------------------------------------------
 
     /** Normal speed for the shooter. */
-    public static final double SHOOTER_TARGET_SPEED_INTAKE_RPM = 3000.0;
+    public static final double SHOOTER_TARGET_SPEED_INTAKE_RPM = 1500.0;
     /** Speed for a normal shot (like a free throw). */
     public static final double SHOOTER_TARGET_SPEED_LAUNCH_RPM = 1500.0;
     /** Speed for a fast, powerful shot. */
