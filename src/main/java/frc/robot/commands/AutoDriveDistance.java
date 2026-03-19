@@ -5,7 +5,9 @@ import frc.robot.subsystems.CANDriveSubsystem;
 
 /**
  * Drives a specific distance using encoder feedback. Resets encoders on start
- * and monitors average wheel distance until the target is reached.
+ * and monitors average wheel distance until the target is reached. Uses
+ * {@link edu.wpi.first.wpilibj.drive.DifferentialDrive#arcadeDrive} (xSpeed
+ * only; zRotation 0) so MotorSafety is fed every cycle.
  *
  * <p>Always pair with {@code .withTimeout()} as a safety net in case the
  * encoders malfunction or the robot is physically blocked.
@@ -35,7 +37,7 @@ public class AutoDriveDistance extends Command {
 
   @Override
   public void execute() {
-    driveSubsystem.driveArcade(Math.signum(targetMeters) * speed, 0);
+    driveSubsystem.driveArcade(Math.signum(targetMeters) * speed, 0, false); // linear for auton
   }
 
   @Override

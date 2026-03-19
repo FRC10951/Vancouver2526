@@ -157,12 +157,25 @@ public class CANDriveSubsystem extends SubsystemBase {
 
   /**
    * Arcade drive: one stick for forward/backward, one for rotation.
+   * Uses DifferentialDrive.arcadeDrive; positive xSpeed = forward, positive zRotation = counterclockwise.
    *
    * @param xSpeed    Forward/backward speed [-1, 1]
    * @param zRotation Rotation rate          [-1, 1]
    */
   public void driveArcade(double xSpeed, double zRotation) {
     drive.arcadeDrive(xSpeed, zRotation);
+  }
+
+  /**
+   * Arcade drive with optional input squaring. Use squareInputs=false in autonomous
+   * for linear response to commanded speeds.
+   *
+   * @param xSpeed       Forward/backward speed [-1, 1]
+   * @param zRotation    Rotation rate [-1, 1]; counterclockwise positive (NWU)
+   * @param squareInputs If true, decreases sensitivity at low speeds (default for teleop)
+   */
+  public void driveArcade(double xSpeed, double zRotation, boolean squareInputs) {
+    drive.arcadeDrive(xSpeed, zRotation, squareInputs);
   }
 
   /**

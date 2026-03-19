@@ -8,6 +8,10 @@ import static frc.robot.Constants.DriveConstants.TRACK_WIDTH_METERS;
  * Point-turns the robot by a specified angle using encoder-based differential
  * measurement. Angle is computed as (leftDistance − rightDistance) / trackWidth.
  *
+ * <p>Uses {@link edu.wpi.first.wpilibj.drive.DifferentialDrive#arcadeDrive} with
+ * zRotation per WPILib convention: counterclockwise positive. So positive
+ * angleDegrees = clockwise (right) = negative zRotation.
+ *
  * <p>Accuracy depends on the {@code TRACK_WIDTH_METERS} constant matching
  * the real robot. Always pair with {@code .withTimeout()} as a safety net.
  */
@@ -36,7 +40,8 @@ public class AutoTurn extends Command {
 
   @Override
   public void execute() {
-    driveSubsystem.driveArcade(0, Math.signum(targetAngleRad) * speed);
+    // DifferentialDrive: zRotation positive = counterclockwise. Clockwise (right) = negative.
+    driveSubsystem.driveArcade(0, -Math.signum(targetAngleRad) * speed, false); // linear for auton
   }
 
   @Override

@@ -31,8 +31,8 @@ public final class Constants {
 
     /** Duty-cycle speed for straight-line driving in auto [0, 1]. */
     public static final double AUTO_DRIVE_SPEED = 0.4;
-    /** Duty-cycle speed for point-turns in auto [0, 1]. */
-    public static final double AUTO_TURN_SPEED = 0.3;
+    /** Duty-cycle speed for point-turns in auto [0, 1]. Increase for faster turns; reduce if overshooting. */
+    public static final double AUTO_TURN_SPEED = 0.6;
   }
 
   public static final class IoConstants {

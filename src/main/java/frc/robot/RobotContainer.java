@@ -26,12 +26,12 @@ import static frc.robot.Constants.DriveConstants.AUTO_TURN_SPEED;
 public class RobotContainer {
   private final CANDriveSubsystem driveSubsystem = new CANDriveSubsystem();
   private final IoSubsystem ioSubsystem = new IoSubsystem();
-  private final CommandXboxController driverController =
-      new CommandXboxController(DRIVER_CONTROLLER_PORT);
-  private final CommandXboxController operatorController =
-      new CommandXboxController(OPERATOR_CONTROLLER_PORT);
+  private final CommandXboxController driverController = new CommandXboxController(DRIVER_CONTROLLER_PORT);
+  private final CommandXboxController operatorController = new CommandXboxController(OPERATOR_CONTROLLER_PORT);
   private final SendableChooser<Command> autoChooser = new SendableChooser<>();
 
+  // ---------------------------------------------------------------------------
+  // AUTONOMOUS ROUTINE 1
   public RobotContainer() {
     configureBindings();
 
@@ -51,15 +51,15 @@ public class RobotContainer {
                 // 6. Forward 2.8 m
                 new AutoDriveDistance(driveSubsystem, 2.8, AUTO_DRIVE_SPEED).withTimeout(10.0),
                 // 7. Turn 30° right
-                new AutoTurn(driveSubsystem, 30.0, AUTO_TURN_SPEED).withTimeout(4.0)
-            )
-        )
-    ));
+                new AutoTurn(driveSubsystem, 30.0, AUTO_TURN_SPEED).withTimeout(4.0)))));
 
     autoChooser.addOption("Do Nothing", Commands.none());
     autoChooser.addOption("Drive Forward 2s",
         new AutoDrive(driveSubsystem, 0.5, 0.0).withTimeout(2.0));
   }
+
+  // END OF AUTONOMOUS ROUTINE 1
+  // ---------------------------------------------------------------------------
 
   public CANDriveSubsystem getDriveSubsystem() {
     return driveSubsystem;
