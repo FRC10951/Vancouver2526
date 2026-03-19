@@ -5,17 +5,18 @@
 package frc.robot;
 
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import static frc.robot.Constants.OperatorConstants.*;
 
 import frc.robot.commands.AutoDrive;
+import frc.robot.commands.AutoDriveDistance;
+import frc.robot.commands.AutoTurn;
 import frc.robot.commands.Drive;
-<<<<<<< HEAD
-// import static frc.robot.Constants.AutoConstants.*;
-=======
->>>>>>> 45b5481
+import static frc.robot.Constants.DriveConstants.AUTO_DRIVE_SPEED;
+import static frc.robot.Constants.DriveConstants.AUTO_TURN_SPEED;
 
 import frc.robot.subsystems.CANDriveSubsystem;
 import frc.robot.subsystems.IoSubsystem;
@@ -36,9 +37,25 @@ public class RobotContainer {
   public RobotContainer() {
     configureBindings();
 
-    autoChooser.setDefaultOption("Do Nothing", Commands.none());
-    // autoChooser.addOption("Center → Drive & Shoot",
-    // centerDriveAndShootCommand());
+    autoChooser.setDefaultOption("Match Auto", Commands.sequence(
+        // 1. Forward 0.5 m
+        new AutoDriveDistance(driveSubsystem, 0.5, AUTO_DRIVE_SPEED).withTimeout(4.0),
+        // 2. Turn 90° right
+        new AutoTurn(driveSubsystem, 90.0, Math.min(1.0, AUTO_TURN_SPEED * 2.5)).withTimeout(3.0),
+        // 3. Forward 1.9 m
+        new AutoDriveDistance(driveSubsystem, 1.9, AUTO_DRIVE_SPEED).withTimeout(8.0),
+        // 4. Turn 90° left
+        new AutoTurn(driveSubsystem, -90.0, Math.min(1.0, AUTO_TURN_SPEED * 2.5)).withTimeout(5.0),
+        // 5–7. Intake runs for 10 s in parallel with the remaining drive steps
+        Commands.parallel(
+            ioSubsystem.commandIntake().withTimeout(10.0),
+            Commands.sequence(
+                // 6. Forward 2.8 m
+                new AutoDriveDistance(driveSubsystem, 2.8, AUTO_DRIVE_SPEED).withTimeout(10.0),
+                // 7. Turn 30° right
+                new AutoTurn(driveSubsystem, 30.0, Math.min(1.0, AUTO_TURN_SPEED * 2.5)).withTimeout(4.0)))));
+
+    autoChooser.addOption("Do Nothing", Commands.none());
     autoChooser.addOption("Drive Forward 2s", new AutoDrive(driveSubsystem, 0.5, 0.0).withTimeout(2.0));
 
     autoChooser.addOption("(test) turn left 2s",
@@ -56,6 +73,8 @@ public class RobotContainer {
             .andThen(new AutoDrive(driveSubsystem, 0, -0.1).withTimeout(2.0))
             .andThen(ioSubsystem.commandLaunch().withTimeout(1.0))
             .andThen(Commands.none()));
+
+    SmartDashboard.putData("Auto", autoChooser);
   }
 
   public CANDriveSubsystem getDriveSubsystem() {
@@ -82,9 +101,9 @@ public class RobotContainer {
     driverController.rightTrigger(TRIGGER_THRESHOLD).whileTrue(ioSubsystem.commandIntake());
     driverController.leftBumper().whileTrue(ioSubsystem.commandEject());
     driverController.x().onTrue(Commands.runOnce(ioSubsystem::toggleSpinUp50Requested));
-    driverController.y().whileTrue(ioSubsystem.runBangBang());
+    driverController.y().whileTrue(ioSubsystem.commandReverseFlywheelAndLoader());
     driverController.b().onTrue(driveSubsystem.runOnce(driveSubsystem::resetEncoders));
-    driverController.a().whileTrue(ioSubsystem.commandLaunchMedium());
+    driverController.a().whileTrue(ioSubsystem.commandHighSpeedLaunch());
   }
 
   /**
@@ -93,16 +112,8 @@ public class RobotContainer {
    * Assumes robot is facing the alliance HUB. Tune CENTER_TO_SHOOT_DRIVE_METERS
    * for your shooter.
    */
-  public Command autonomousCommand() {
-
-    Command run = new AutoDrive(driveSubsystem, 0.5, 0.0).withTimeout(1.0);
-    Command spin = ioSubsystem.commandIntakeAuton().withTimeout(7.0);
-    return Commands.sequence(spin, run);
-
-  }
-
   /** Returns the autonomous command selected on the dashboard. */
   public Command getAutonomousCommand() {
-    return autonomousCommand();
+    return autoChooser.getSelected();
   }
 }

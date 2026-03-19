@@ -7,7 +7,6 @@ import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
-import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.BangBangController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
@@ -15,7 +14,6 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import static frc.robot.Constants.IoConstants.*;
 
-import frc.robot.Constants.IoConstants;
 import frc.robot.Constants.IoConstants.IoCanIdGroup;
 
 /**
@@ -37,16 +35,14 @@ public class IoSubsystem extends SubsystemBase {
   private boolean spinUp50Requested = false;
   private final SparkMax intakeMotor;
   private final SparkMax loaderMotor;
-  private final RelativeEncoder ioEncoder;
   private final BangBangController shooterBangBang;
-  private double targetRPM = IoConstants.TARGET_RPM;
 
   public IoSubsystem() {
     this(IO_CAN_IDS);
   }
 
   public IoSubsystem(IoCanIdGroup canIds) {
-    flywheelMotor = new SparkMax(canIds.flywheelMotorId, MotorType.kBrushless);
+    flywheelMotor = new SparkMax(canIds.ioMotorId, MotorType.kBrushless);
     SparkMaxConfig flywheelConfig = new SparkMaxConfig();
     flywheelConfig.smartCurrentLimit(FLYWHEEL_MOTOR_CURRENT_LIMIT);
     flywheelConfig.voltageCompensation(12.0);
@@ -62,8 +58,6 @@ public class IoSubsystem extends SubsystemBase {
     SparkMaxConfig loaderConfig = new SparkMaxConfig();
     loaderConfig.smartCurrentLimit(LOADER_MOTOR_CURRENT_LIMIT);
     loaderMotor.configure(loaderConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-
-    ioEncoder = ioMotor.getEncoder();
     shooterBangBang = new BangBangController();
     shooterBangBang.setTolerance(30); // TODO
 

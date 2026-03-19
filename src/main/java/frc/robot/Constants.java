@@ -21,6 +21,24 @@ public final class Constants {
     public static final double WHEEL_DIAMETER_METERS = 0.1524;
     /** Gear ratio motor-to-wheel (e.g. 10.71 for KitBot). */
     public static final double GEAR_RATIO = 10.71;
+
+    /**
+     * Approximate track width (meters) used for encoder-only in-place turns.
+     * Measure center-to-center distance between left and right wheels for best
+     * results.
+     */
+    public static final double DRIVE_TRACK_WIDTH_METERS = 0.55;
+
+    /** Default speed for distance-based autonomous driving [0, 1]. */
+    public static final double AUTO_DRIVE_SPEED = 0.45;
+    /** Default speed for encoder-only autonomous turning [0, 1]. */
+    public static final double AUTO_TURN_SPEED = 0.523;
+
+    /**
+     * Scalar applied to encoder-only turn distance calculations.
+     * If the robot over-rotates, decrease this; if it under-rotates, increase it.
+     */
+    public static final double AUTO_TURN_DISTANCE_SCALAR = 0.125;
   }
 
   public static final class IoConstants {
@@ -35,6 +53,8 @@ public final class Constants {
     public static final int IO_MOTOR_CURRENT_LIMIT = 60;
     public static final int INTAKE_MOTOR_CURRENT_LIMIT = 60;
     public static final int LOADER_MOTOR_CURRENT_LIMIT = 60;
+    /** Current limit (amps) for the shooter flywheel motor. */
+    public static final int FLYWHEEL_MOTOR_CURRENT_LIMIT = 60;
 
     // -----------------------------------------------------------------------
     // Shooter / intake speed control (encoder-based)
@@ -46,6 +66,12 @@ public final class Constants {
     public static final double SHOOTER_TARGET_SPEED_SPINUP50_RPM = 2000.0;
     /** Target shooter speed (RPM) when using the right-trigger toggle. */
     public static final double SHOOTER_TARGET_SPEED_TOGGLE_RPM = SHOOTER_TARGET_SPEED_INTAKE_RPM;
+    /** Target shooter speed (RPM) for the main launch shot. */
+    public static final double SHOOTER_TARGET_SPEED_LAUNCH_RPM = 3200.0;
+    /** Target shooter speed (RPM) for a high-speed shot (A button). */
+    public static final double SHOOTER_TARGET_SPEED_HIGH_RPM = 3500.0;
+    /** Target shooter speed (RPM) for an ultra-speed shot (long range). */
+    public static final double SHOOTER_TARGET_SPEED_ULTRA_RPM = 3800.0;
 
     /** Proportional gain for shooter speed control (simple P loop). */
     public static final double SHOOTER_KP = 0.003;
@@ -105,6 +131,14 @@ public final class Constants {
      * Sign chosen to match the intake direction.
      */
     public static final double IO_SPIN_UP_50_VOLTAGE = 6.0;
+
+    // -----------------------------------------------------------------------
+    // Intake pulsing helper
+    // -----------------------------------------------------------------------
+    /** Time (seconds) intake is on during a pulse cycle. */
+    public static final double INTAKE_PULSE_ON_SECONDS = 0.25;
+    /** Time (seconds) intake is off during a pulse cycle. */
+    public static final double INTAKE_PULSE_OFF_SECONDS = 0.25;
 
     /**
      * Logical grouping of CAN IDs for the IO / intake / loader motors. This
