@@ -12,10 +12,16 @@ import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.kinematics.DifferentialDriveOdometry;
+import edu.wpi.first.wpilibj.AnalogGyro;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.simulation.AnalogGyroSim;
 import edu.wpi.first.wpilibj.simulation.DifferentialDrivetrainSim;
 import edu.wpi.first.wpilibj.simulation.DifferentialDrivetrainSim.KitbotGearing;
 import edu.wpi.first.wpilibj.simulation.DifferentialDrivetrainSim.KitbotMotor;
@@ -26,8 +32,10 @@ import static frc.robot.Constants.DriveConstants.*;
 /**
  * Tank (differential) drive subsystem using CAN SparkMax controllers.
  *
- * <p>Supports both tank drive (independent left/right sticks) and arcade drive
- * (forward + rotation), making it easy to switch control styles in {@code Drive.java}.
+ * <p>
+ * Supports both tank drive (independent left/right sticks) and arcade drive
+ * (forward + rotation), making it easy to switch control styles in
+ * {@code Drive.java}.
  */
 public class CANDriveSubsystem extends SubsystemBase {
 
@@ -43,19 +51,25 @@ public class CANDriveSubsystem extends SubsystemBase {
   private final RelativeEncoder leftEncoder;
   private final RelativeEncoder rightEncoder;
 
-  private static final double METERS_PER_ROTATION =
-      (Math.PI * WHEEL_DIAMETER_METERS) / GEAR_RATIO;
+  private static final double METERS_PER_ROTATION = (Math.PI * WHEEL_DIAMETER_METERS) / GEAR_RATIO;
 
   // --- Simulation (only used when RobotBase.isSimulation()) ---
   private DifferentialDrivetrainSim m_driveSim;
   private SparkRelativeEncoderSim m_leftEncoderSim;
   private SparkRelativeEncoderSim m_rightEncoderSim;
 
+  // TODO: none of this prob exists
+  private AnalogGyro m_gyro = new AnalogGyro(1);
+  private AnalogGyroSim m_gyroSim = new AnalogGyroSim(m_gyro);
+  private DifferentialDriveOdometry m_odometry;
+
+  private Field2d m_field = new Field2d();
+
   public CANDriveSubsystem() {
     // Create brushed motors for a KitBot-style CIM drivetrain
-    leftLeader   = new SparkMax(LEFT_LEADER_ID,   MotorType.kBrushed);
-    leftFollower  = new SparkMax(LEFT_FOLLOWER_ID,  MotorType.kBrushed);
-    rightLeader  = new SparkMax(RIGHT_LEADER_ID,  MotorType.kBrushed);
+    leftLeader = new SparkMax(LEFT_LEADER_ID, MotorType.kBrushed);
+    leftFollower = new SparkMax(LEFT_FOLLOWER_ID, MotorType.kBrushed);
+    rightLeader = new SparkMax(RIGHT_LEADER_ID, MotorType.kBrushed);
     rightFollower = new SparkMax(RIGHT_FOLLOWER_ID, MotorType.kBrushed);
 
     drive = new DifferentialDrive(leftLeader, rightLeader);
@@ -89,19 +103,28 @@ public class CANDriveSubsystem extends SubsystemBase {
     rightFollower.configure(rightFollowerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
     // Built-in encoders
-    leftEncoder  = leftLeader.getEncoder();
+    leftEncoder = leftLeader.getEncoder();
     rightEncoder = rightLeader.getEncoder();
 
     // Simulation: KitBot-style drivetrain (dual CIM per side, 10.71:1, 6" wheels)
     if (RobotBase.isSimulation()) {
       m_driveSim = DifferentialDrivetrainSim.createKitbotSim(
-          KitbotMotor.kDualCIMPerSide,
+          KitbotMotor.kDoubleNEOPerSide, // NEOs are brushless
           KitbotGearing.k10p71,
           KitbotWheelSize.kSixInch,
           null);
       m_leftEncoderSim = new SparkRelativeEncoderSim(leftLeader);
       m_rightEncoderSim = new SparkRelativeEncoderSim(rightLeader);
     }
+
+    m_odometry = new DifferentialDriveOdometry(
+        m_gyro.getRotation2d(),
+        // todo: is this the right method?
+        getLeftDistanceMeters(),
+        getRightDistanceMeters(),
+        new Pose2d(5.0, 13.5, new Rotation2d()));
+
+    SmartDashboard.putData("Field", m_field);
   }
 
   // ---------------------------------------------------------------------------
@@ -111,10 +134,17 @@ public class CANDriveSubsystem extends SubsystemBase {
   @Override
   public void periodic() {
     // Publish useful diagnostics to SmartDashboard
-    SmartDashboard.putNumber("Left Distance (m)",    getLeftDistanceMeters());
-    SmartDashboard.putNumber("Right Distance (m)",   getRightDistanceMeters());
-    SmartDashboard.putNumber("Left Velocity (m/s)",  getLeftVelocityMetersPerSecond());
+    SmartDashboard.putNumber("Left Distance (m)", getLeftDistanceMeters());
+    SmartDashboard.putNumber("Right Distance (m)", getRightDistanceMeters());
+    SmartDashboard.putNumber("Left Velocity (m/s)", getLeftVelocityMetersPerSecond());
     SmartDashboard.putNumber("Right Velocity (m/s)", getRightVelocityMetersPerSecond());
+
+    m_odometry.update(m_gyro.getRotation2d(),
+        getLeftDistanceMeters(),
+        getRightDistanceMeters());
+
+    m_field.setRobotPose(m_odometry.getPoseMeters());
+
   }
 
   @Override
@@ -122,14 +152,8 @@ public class CANDriveSubsystem extends SubsystemBase {
     if (m_driveSim == null) {
       return;
     }
-    double batteryVolts = RobotController.getInputVoltage();
-    // Left leader is inverted in hardware config, so negate for sim (positive = forward).
-    double leftVolts = -leftLeader.getAppliedOutput() * batteryVolts;
-    double rightVolts = rightLeader.getAppliedOutput() * batteryVolts;
-    m_driveSim.setInputs(leftVolts, rightVolts);
-    m_driveSim.update(0.02);
-
-    // Push sim state into encoder sim (position in rotations, velocity in RPM).
+    double leftVolts = leftLeader.getAppliedOutput() * RobotController.getBatteryVoltage();
+    double rightVolts = rightLeader.getAppliedOutput() * RobotController.getBatteryVoltage();
     double leftPosM = m_driveSim.getLeftPositionMeters();
     double rightPosM = m_driveSim.getRightPositionMeters();
     double leftVelMS = m_driveSim.getLeftVelocityMetersPerSecond();
@@ -138,6 +162,10 @@ public class CANDriveSubsystem extends SubsystemBase {
     m_leftEncoderSim.setVelocity(leftVelMS / METERS_PER_ROTATION * 60.0);
     m_rightEncoderSim.setPosition(rightPosM / METERS_PER_ROTATION);
     m_rightEncoderSim.setVelocity(rightVelMS / METERS_PER_ROTATION * 60.0);
+    m_driveSim.setInputs(leftVolts, rightVolts);
+    m_gyroSim.setAngle(m_driveSim.getHeading().getDegrees());
+    m_driveSim.update(0.02);
+
   }
 
   // ---------------------------------------------------------------------------
@@ -148,7 +176,7 @@ public class CANDriveSubsystem extends SubsystemBase {
    * Tank drive: each side is controlled independently.
    * Positive values drive each side forward.
    *
-   * @param leftSpeed  Speed for the left side  [-1, 1]
+   * @param leftSpeed  Speed for the left side [-1, 1]
    * @param rightSpeed Speed for the right side [-1, 1]
    */
   public void driveTank(double leftSpeed, double rightSpeed) {
@@ -159,7 +187,7 @@ public class CANDriveSubsystem extends SubsystemBase {
    * Arcade drive: one stick for forward/backward, one for rotation.
    *
    * @param xSpeed    Forward/backward speed [-1, 1]
-   * @param zRotation Rotation rate          [-1, 1]
+   * @param zRotation Rotation rate [-1, 1]
    */
   public void driveArcade(double xSpeed, double zRotation) {
     drive.arcadeDrive(xSpeed, zRotation);
@@ -169,7 +197,7 @@ public class CANDriveSubsystem extends SubsystemBase {
    * Sets raw voltage on each side of the drivetrain.
    * Useful for autonomous routines that need precise distance control.
    *
-   * @param leftVolts  Voltage for the left side  [-12, 12]
+   * @param leftVolts  Voltage for the left side [-12, 12]
    * @param rightVolts Voltage for the right side [-12, 12]
    */
   public void driveVolts(double leftVolts, double rightVolts) {
