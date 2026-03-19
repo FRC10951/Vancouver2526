@@ -11,9 +11,13 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import static frc.robot.Constants.OperatorConstants.*;
 
 import frc.robot.commands.AutoDrive;
+import frc.robot.commands.AutoDriveDistance;
+import frc.robot.commands.AutoTurn;
 import frc.robot.commands.Drive;
 import frc.robot.subsystems.CANDriveSubsystem;
 import frc.robot.subsystems.IoSubsystem;
+import static frc.robot.Constants.DriveConstants.AUTO_DRIVE_SPEED;
+import static frc.robot.Constants.DriveConstants.AUTO_TURN_SPEED;
 
 /**
  * Robot container: subsystems, driver/operator controllers, button bindings,
@@ -31,24 +35,30 @@ public class RobotContainer {
   public RobotContainer() {
     configureBindings();
 
-    autoChooser.setDefaultOption("Do Nothing", Commands.none());
-    autoChooser.addOption("Drive Forward 2s", new AutoDrive(driveSubsystem, 0.5, 0.0).withTimeout(2.0));
+    autoChooser.setDefaultOption("Match Auto", Commands.sequence(
+        // 1. Forward 0.5 m
+        new AutoDriveDistance(driveSubsystem, 0.5, AUTO_DRIVE_SPEED).withTimeout(4.0),
+        // 2. Turn 90° right
+        new AutoTurn(driveSubsystem, 90.0, AUTO_TURN_SPEED).withTimeout(5.0),
+        // 3. Forward 1.9 m
+        new AutoDriveDistance(driveSubsystem, 1.9, AUTO_DRIVE_SPEED).withTimeout(8.0),
+        // 4. Turn 90° left
+        new AutoTurn(driveSubsystem, -90.0, AUTO_TURN_SPEED).withTimeout(5.0),
+        // 5–7. Intake runs for 10 s in parallel with the remaining drive steps
+        Commands.parallel(
+            ioSubsystem.commandIntake().withTimeout(10.0),
+            Commands.sequence(
+                // 6. Forward 2.8 m
+                new AutoDriveDistance(driveSubsystem, 2.8, AUTO_DRIVE_SPEED).withTimeout(10.0),
+                // 7. Turn 30° right
+                new AutoTurn(driveSubsystem, 30.0, AUTO_TURN_SPEED).withTimeout(4.0)
+            )
+        )
+    ));
 
-    autoChooser.addOption("(test) turn left 2s",
-        new AutoDrive(driveSubsystem, 0, 0.1).withTimeout(2.0)
-            .andThen(Commands.none()));
-
-    autoChooser.addOption("(untested) Drive back & shoot preload left",
-        new AutoDrive(driveSubsystem, -0.5, 0.0).withTimeout(2.0)
-            .andThen(new AutoDrive(driveSubsystem, 0, 0.1).withTimeout(2.0))
-            .andThen(ioSubsystem.commandLaunch().withTimeout(1.0))
-            .andThen(Commands.none()));
-
-    autoChooser.addOption("(untested) Drive back & shoot preload right",
-        new AutoDrive(driveSubsystem, -0.5, 0.0).withTimeout(2.0)
-            .andThen(new AutoDrive(driveSubsystem, 0, -0.1).withTimeout(2.0))
-            .andThen(ioSubsystem.commandLaunch().withTimeout(1.0))
-            .andThen(Commands.none()));
+    autoChooser.addOption("Do Nothing", Commands.none());
+    autoChooser.addOption("Drive Forward 2s",
+        new AutoDrive(driveSubsystem, 0.5, 0.0).withTimeout(2.0));
   }
 
   public CANDriveSubsystem getDriveSubsystem() {

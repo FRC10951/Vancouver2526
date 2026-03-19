@@ -21,6 +21,18 @@ public final class Constants {
     public static final double WHEEL_DIAMETER_METERS = 0.1524;
     /** Gear ratio motor-to-wheel (e.g. 10.71 for KitBot). */
     public static final double GEAR_RATIO = 10.71;
+
+    /**
+     * Distance between wheel centers in meters (~22 in for KitBot AM14U).
+     * CALIBRATE THIS: mark a spot, command a 360° turn, and adjust until
+     * the robot returns to its starting heading.
+     */
+    public static final double TRACK_WIDTH_METERS = 0.559;
+
+    /** Duty-cycle speed for straight-line driving in auto [0, 1]. */
+    public static final double AUTO_DRIVE_SPEED = 0.4;
+    /** Duty-cycle speed for point-turns in auto [0, 1]. */
+    public static final double AUTO_TURN_SPEED = 0.3;
   }
 
   public static final class IoConstants {
