@@ -29,7 +29,7 @@ public final class Constants {
     public static final double GEAR_RATIO = 10.71;
 
     /** How fast the intake wiggles back and forth to unjam balls. */
-    public static final double INTAKE_WIGGLE_SPEED = 0.4;
+    public static final double INTAKE_WIGGLE_SPEED = 0.5;
 
     /** How long each wiggle lasts in seconds. */
     public static final double INTAKE_WIGGLE_HALF_PERIOD = 0.1;
@@ -124,10 +124,10 @@ public final class Constants {
     /** Power to keep the shooter halfway spun up so it's ready quickly. */
     public static final double FLYWHEEL_SPIN_UP_50_VOLTAGE = 6.0;
 
-    /** How long the intake stays on when we do a pulsing wiggle. */
-    public static final double INTAKE_PULSE_ON_SECONDS = 0.5;
-    /** How long the intake stays off during the pulsing wiggle. */
-    public static final double INTAKE_PULSE_OFF_SECONDS = 0.4;
+    /** How long the intake stays on when we do a pulsing wiggle (shoot sequence). Total cycle is 2 seconds. */
+    public static final double INTAKE_PULSE_ON_SECONDS = 1.0;
+    /** How long the intake stays off during the pulsing wiggle (shoot sequence). Total cycle is 2 seconds. */
+    public static final double INTAKE_PULSE_OFF_SECONDS = 1.0;
 
     /**
      * A little helper bundle! It groups the IDs for the shooter, intake, and loader

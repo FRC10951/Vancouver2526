@@ -37,22 +37,6 @@ public class RobotContainer {
     // autoChooser.addOption("Center → Drive & Shoot",
     // centerDriveAndShootCommand());
     autoChooser.addOption("Drive Forward 2s", new AutoDrive(driveSubsystem, 0.5, 0.0).withTimeout(2.0));
-
-    autoChooser.addOption("(test) turn left 2s",
-        new AutoDrive(driveSubsystem, 0, 0.1).withTimeout(2.0)
-            .andThen(Commands.none()));
-
-    autoChooser.addOption("(untested) Drive back & shoot preload left",
-        new AutoDrive(driveSubsystem, -0.5, 0.0).withTimeout(2.0)
-            .andThen(new AutoDrive(driveSubsystem, 0, 0.1).withTimeout(2.0))
-            .andThen(createShootingSequence(ioSubsystem.commandLaunch()).withTimeout(1.0))
-            .andThen(Commands.none()));
-
-    autoChooser.addOption("(untested) Drive back & shoot preload right",
-        new AutoDrive(driveSubsystem, -0.5, 0.0).withTimeout(2.0)
-            .andThen(new AutoDrive(driveSubsystem, 0, -0.1).withTimeout(2.0))
-            .andThen(createShootingSequence(ioSubsystem.commandLaunch()).withTimeout(1.0))
-            .andThen(Commands.none()));
   }
 
   public CANDriveSubsystem getDriveSubsystem() {
@@ -102,41 +86,11 @@ public class RobotContainer {
   }
 
   /**
-   * Autonomous: start at center, drive toward our HUB to shooting range, then
-   * launch into HUB.
-   * Assumes robot is facing the alliance HUB. Tune CENTER_TO_SHOOT_DRIVE_METERS
-   * for your shooter.
+   * Autonomous: shoot only (no movement).
+   * Assumes robot is already at shooting position facing the alliance HUB.
    */
   public Command autonomousCommand() {
-    return Commands.sequence(
-
-        // Shoot for three seccond
-        ioSubsystem.commandLaunch().withTimeout(3.0),
-        // Go forward 0.5 meters (0.5 speed * 1.0s = 0.5m)
-        new AutoDrive(driveSubsystem, 0.5, 0.0).withTimeout(1.0),
-
-        // Turn 90 degrees to the right
-        new AutoDrive(driveSubsystem, 0.0, 0.3).withTimeout(2.0),
-
-        // Go forward 1.91 meters (0.5 speed * 3.82s = ~1.91m)
-        new AutoDrive(driveSubsystem, 0.5, 0.0).withTimeout(3.82),
-
-        // Turn 90 degrees to the left
-        new AutoDrive(driveSubsystem, 0.0, -0.3).withTimeout(2.0),
-
-        // Turn on intake while driving! (Use race so it stops intaking when it finishes
-        // driving)
-        Commands.race(
-            ioSubsystem.commandIntake(),
-            Commands.sequence(
-                // Drive forward 2.8 meters (0.5 speed * 5.6s = ~2.8m)
-                new AutoDrive(driveSubsystem, 0.5, 0.0).withTimeout(5.6),
-
-                // Turn 45 degrees
-                new AutoDrive(driveSubsystem, 0.0, 0.3).withTimeout(1.0))),
-
-        // Shoot for 5 seconds
-        ioSubsystem.commandLaunch().withTimeout(5.0));
+    return ioSubsystem.commandLaunch().withTimeout(5.0);
   }
 
   /** Returns the autonomous command selected on the dashboard. */

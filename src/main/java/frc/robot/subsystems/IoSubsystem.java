@@ -63,7 +63,7 @@ public class IoSubsystem extends SubsystemBase {
     updateShooterControl();
   }
 
-  /** Set flywheel motor by voltage and loader by duty cycle (0–1). */
+  /** Set flywheel motor by voltage and loader by duty cycle (0?1). */
   public void setSpeeds(double flywheelVoltage, double intakeOutput, double loaderOutput) {
     flywheelMotor.setVoltage(flywheelVoltage);
     intakeMotor.setVoltage(intakeOutput);
@@ -223,24 +223,13 @@ public class IoSubsystem extends SubsystemBase {
    * interrupts.
    */
   public Command commandIntake() {
-    edu.wpi.first.wpilibj.Timer timer = new edu.wpi.first.wpilibj.Timer();
     return Commands.run(
         () -> {
           disableShooter();
           loaderMotor.set(INTAKING_LOADER_OUTPUT);
-          
-          double time = timer.get();
-          double cycleTime = INTAKE_PULSE_ON_SECONDS + INTAKE_PULSE_OFF_SECONDS;
-          double currentCycleTime = time % cycleTime;
-          
-          if (currentCycleTime < INTAKE_PULSE_ON_SECONDS) {
-            intakeMotor.setVoltage(INTAKING_INTAKE_OUTPUT);
-          } else {
-            intakeMotor.setVoltage(0.0);
-          }
+          intakeMotor.setVoltage(INTAKING_INTAKE_OUTPUT);
         },
         this)
-        .beforeStarting(timer::restart)
         .withName("Intake")
         .finallyDo(interrupted -> {
           intakeMotor.setVoltage(0.0);
@@ -272,11 +261,14 @@ public class IoSubsystem extends SubsystemBase {
               double current = getShooterSpeedRpm();
               boolean atSpeed = current >= SHOOTER_TARGET_SPEED_LAUNCH_RPM * SHOOTER_SPINUP_THRESHOLD_FRACTION;
               loaderMotor.set(atSpeed ? LAUNCHING_LOADER_OUTPUT : 0.0);
+              // Intake runs whenever loader (CAN 19) is active.
+              intakeMotor.setVoltage(atSpeed ? INTAKING_INTAKE_OUTPUT : 0.0);
             })
             .finallyDo(interrupted -> {
-              // Stop loader when command ends; shooter only stays on if the
+              // Stop loader and intake when command ends; shooter only stays on if the
               // X-button spin-up mode is enabled (persistent spin-up).
               loaderMotor.set(0.0);
+              intakeMotor.setVoltage(0.0);
               if (!spinUp50Requested) {
                 disableShooter();
               }
@@ -299,9 +291,11 @@ public class IoSubsystem extends SubsystemBase {
               boolean atSpeed =
                   current >= highSpeedRpm * SHOOTER_SPINUP_THRESHOLD_FRACTION;
               loaderMotor.set(atSpeed ? LAUNCHING_LOADER_OUTPUT : 0.0);
+              intakeMotor.setVoltage(atSpeed ? INTAKING_INTAKE_OUTPUT : 0.0);
             })
             .finallyDo(interrupted -> {
               loaderMotor.set(0.0);
+              intakeMotor.setVoltage(0.0);
               if (!spinUp50Requested) {
                 disableShooter();
               }
@@ -323,9 +317,11 @@ public class IoSubsystem extends SubsystemBase {
               boolean atSpeed =
                   current >= ultraRpm * SHOOTER_SPINUP_THRESHOLD_FRACTION;
               loaderMotor.set(atSpeed ? LAUNCHING_LOADER_OUTPUT : 0.0);
+              intakeMotor.setVoltage(atSpeed ? INTAKING_INTAKE_OUTPUT : 0.0);
             })
             .finallyDo(interrupted -> {
               loaderMotor.set(0.0);
+              intakeMotor.setVoltage(0.0);
               if (!spinUp50Requested) {
                 disableShooter();
               }
@@ -376,11 +372,12 @@ public class IoSubsystem extends SubsystemBase {
     return this.run(
         () -> {
           flywheelMotor.setVoltage(-SHOOTER_MAX_VOLTAGE / 2.0);
-          intakeMotor.setVoltage(0.0);
           loaderMotor.set(INTAKING_LOADER_OUTPUT);
+          intakeMotor.setVoltage(INTAKING_INTAKE_OUTPUT); // Intake active whenever loader (CAN 19) is active
         }).finallyDo(interrupted -> {
           flywheelMotor.setVoltage(0.0);
           loaderMotor.set(0.0);
+          intakeMotor.setVoltage(0.0);
         });
   }
 }
