@@ -9,7 +9,9 @@ import frc.robot.subsystems.CANDriveSubsystem;
 
 /**
  * Drives the robot at a fixed speed and rotation for use in autonomous routines.
- * Pair with {@code .withTimeout(seconds)} to drive for a set duration.
+ * Uses {@link edu.wpi.first.wpilibj.drive.DifferentialDrive#arcadeDrive}: xSpeed
+ * forward positive, zRotation counterclockwise positive [-1, 1]. Called every
+ * cycle to satisfy MotorSafety. Pair with {@code .withTimeout(seconds)} to bound duration.
  *
  * <p>Example — drive straight for 2 seconds:
  * <pre>new AutoDrive(driveSubsystem, 0.5, 0.0).withTimeout(2)</pre>
@@ -39,7 +41,7 @@ public class AutoDrive extends Command {
   // keeps the motor-safety watchdog satisfied
   @Override
   public void execute() {
-    driveSubsystem.driveArcade(xSpeed, zRotation);
+    driveSubsystem.driveArcade(xSpeed, zRotation, false); // linear for auton
   }
 
   @Override

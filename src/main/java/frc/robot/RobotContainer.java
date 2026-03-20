@@ -5,14 +5,18 @@
 package frc.robot;
 
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import static frc.robot.Constants.OperatorConstants.*;
-import static frc.robot.Constants.DriveConstants.*;
 
 import frc.robot.commands.AutoDrive;
+import frc.robot.commands.AutoDriveDistance;
+import frc.robot.commands.AutoTurn;
 import frc.robot.commands.Drive;
+import static frc.robot.Constants.DriveConstants.AUTO_DRIVE_SPEED;
+import static frc.robot.Constants.DriveConstants.AUTO_TURN_SPEED;
 
 import frc.robot.subsystems.CANDriveSubsystem;
 import frc.robot.subsystems.IoSubsystem;
@@ -33,9 +37,25 @@ public class RobotContainer {
   public RobotContainer() {
     configureBindings();
 
-    autoChooser.setDefaultOption("Do Nothing", Commands.none());
-    // autoChooser.addOption("Center → Drive & Shoot",
-    // centerDriveAndShootCommand());
+    autoChooser.setDefaultOption("Match Auto", Commands.sequence(
+        // 1. Forward 0.5 m
+        new AutoDriveDistance(driveSubsystem, 0.5, AUTO_DRIVE_SPEED).withTimeout(4.0),
+        // 2. Turn 90° right
+        new AutoTurn(driveSubsystem, 90.0, Math.min(1.0, AUTO_TURN_SPEED * 2.5)).withTimeout(3.0),
+        // 3. Forward 1.9 m
+        new AutoDriveDistance(driveSubsystem, 1.9, AUTO_DRIVE_SPEED).withTimeout(8.0),
+        // 4. Turn 90° left
+        new AutoTurn(driveSubsystem, -90.0, Math.min(1.0, AUTO_TURN_SPEED * 2.5)).withTimeout(5.0),
+        // 5–7. Intake runs for 10 s in parallel with the remaining drive steps
+        Commands.parallel(
+            ioSubsystem.commandIntake().withTimeout(10.0),
+            Commands.sequence(
+                // 6. Forward 2.8 m
+                new AutoDriveDistance(driveSubsystem, 2.8, AUTO_DRIVE_SPEED).withTimeout(10.0),
+                // 7. Turn 30° right
+                new AutoTurn(driveSubsystem, 30.0, Math.min(1.0, AUTO_TURN_SPEED * 2.5)).withTimeout(4.0)))));
+
+    autoChooser.addOption("Do Nothing", Commands.none());
     autoChooser.addOption("Drive Forward 2s", new AutoDrive(driveSubsystem, 0.5, 0.0).withTimeout(2.0));
   }
 
@@ -51,38 +71,21 @@ public class RobotContainer {
     return operatorController;
   }
 
-  /**
-   * Helper to wrap any launch command with the required intake pulsing and
-   * drivetrain wiggle.
-   */
-  private Command createShootingSequence(Command launchCommand) {
-    return Commands.parallel(
-        launchCommand,
-        ioSubsystem.commandIntakePulse(),
-        driveSubsystem.commandIntakeWiggle(INTAKE_WIGGLE_SPEED, INTAKE_WIGGLE_HALF_PERIOD));
-  }
-
   private void configureBindings() {
     driveSubsystem.setDefaultCommand(new Drive(driveSubsystem, driverController));
     ioSubsystem.setDefaultCommand(ioSubsystem.commandIdle());
 
     // Left trigger SHOOTS: spin up shooter with encoder control and feed balls
     // (loader gated on shooter speed) while allowing normal driving.
-    driverController.leftTrigger(TRIGGER_THRESHOLD).whileTrue(
-        createShootingSequence(ioSubsystem.commandLaunch()));
+    driverController.leftTrigger(TRIGGER_THRESHOLD).whileTrue(ioSubsystem.commandLaunch());
 
     // Right trigger INTAKES: run intake + loader only (no shooter spin).
     driverController.rightTrigger(TRIGGER_THRESHOLD).whileTrue(ioSubsystem.commandIntake());
     driverController.leftBumper().whileTrue(ioSubsystem.commandEject());
     driverController.x().onTrue(Commands.runOnce(ioSubsystem::toggleSpinUp50Requested));
     driverController.y().whileTrue(ioSubsystem.commandReverseFlywheelAndLoader());
-    // B button: high-speed shoot with automatic forward/backward wiggle.
-    driverController.b().whileTrue(
-        createShootingSequence(ioSubsystem.commandHighSpeedLaunch()));
-    // Right bumper: ultra-speed shoot with same intake pulsing + wiggle.
-    driverController.rightBumper().whileTrue(
-        createShootingSequence(ioSubsystem.commandUltraSpeedLaunch()));
-    driverController.a().whileTrue(ioSubsystem.commandMaxSpin());
+    driverController.b().onTrue(driveSubsystem.runOnce(driveSubsystem::resetEncoders));
+    driverController.a().whileTrue(ioSubsystem.commandHighSpeedLaunch());
   }
 
   /**
@@ -109,6 +112,6 @@ public class RobotContainer {
 
   /** Returns the autonomous command selected on the dashboard. */
   public Command getAutonomousCommand() {
-    return autonomousCommand();
+    return autoChooser.getSelected();
   }
 }

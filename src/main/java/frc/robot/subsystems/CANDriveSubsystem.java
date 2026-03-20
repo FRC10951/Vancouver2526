@@ -40,6 +40,9 @@ public class CANDriveSubsystem extends SubsystemBase {
   private final RelativeEncoder leftEncoder;
   private final RelativeEncoder rightEncoder;
 
+  // private final EncoderSim leftEncoderSim;
+  // private final EncoderSim rightEncoderSim;
+
   private static final double METERS_PER_ROTATION = (Math.PI * WHEEL_DIAMETER_METERS) / GEAR_RATIO;
 
   public CANDriveSubsystem() {
@@ -82,6 +85,10 @@ public class CANDriveSubsystem extends SubsystemBase {
     // Built-in encoders
     leftEncoder = leftLeader.getEncoder();
     rightEncoder = rightLeader.getEncoder();
+
+    // setup simulation
+    // leftEncoderSim = new EncoderSim(leftEncoder);
+    // rightEncoderSim = new EncoderSim(rightEncoder);
   }
 
   // ---------------------------------------------------------------------------
