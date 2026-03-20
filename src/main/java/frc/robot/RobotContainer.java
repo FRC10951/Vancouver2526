@@ -86,11 +86,25 @@ public class RobotContainer {
   }
 
   /**
-   * Autonomous: shoot only (no movement).
-   * Assumes robot is already at shooting position facing the alliance HUB.
+   * Autonomous: shoot first, then drive forward for one second (arcade drive, no
+   * rotation).
+   * Tank drivetrain driven via arcade: xSpeed = forward, zRotation = 0 for
+   * straight.
    */
   public Command autonomousCommand() {
-    return ioSubsystem.commandLaunch().withTimeout(5.0);
+    return Commands.sequence(
+        // Shoot initial 8 fuel;
+        ioSubsystem.commandLaunch().withTimeout(5.0),
+        // Drive forward 0.5 meters;
+        new AutoDrive(driveSubsystem, 0.75, 0.0).withTimeout(0.5),
+        // Rotate 90 degrees to the right;
+        new AutoDrive(driveSubsystem, 0.0, -0.66).withTimeout(0.5),
+        // Drive forward 0.5 meters;
+        new AutoDrive(driveSubsystem, 0.75, 0.0).withTimeout(1.0),
+        // Rotate 90 degrees to the right;
+        new AutoDrive(driveSubsystem, 0.0, 0.73).withTimeout(0.5),
+        // Drive forward 2.8 meters;
+        new AutoDrive(driveSubsystem, 0.75, 0.0).withTimeout(1.1));
   }
 
   /** Returns the autonomous command selected on the dashboard. */
