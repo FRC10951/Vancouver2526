@@ -30,7 +30,7 @@ public final class Constants {
     public static final double DRIVE_TRACK_WIDTH_METERS = 0.55;
 
     /** How fast the intake wiggles back and forth to unjam balls. */
-    public static final double INTAKE_WIGGLE_SPEED = 0.5;
+    public static final double INTAKE_WIGGLE_SPEED = 0.45;
 
     /**
      * Scalar applied to encoder-only turn distance calculations.
@@ -59,17 +59,17 @@ public final class Constants {
     // -----------------------------------------------------------------------
 
     /** Target shooter speed (RPM) for the main shooting/intake command. */
-    public static final double SHOOTER_TARGET_SPEED_INTAKE_RPM = 3000.0;
+    public static final double SHOOTER_TARGET_SPEED_INTAKE_RPM = 1500.0;
     /** Target shooter speed (RPM) for the 50% spin-up toggle. */
-    public static final double SHOOTER_TARGET_SPEED_SPINUP50_RPM = 2000.0;
+    public static final double SHOOTER_TARGET_SPEED_SPINUP50_RPM = 1000.0;
     /** Target shooter speed (RPM) when using the right-trigger toggle. */
     public static final double SHOOTER_TARGET_SPEED_TOGGLE_RPM = SHOOTER_TARGET_SPEED_INTAKE_RPM;
     /** Target shooter speed (RPM) for the main launch shot. */
-    public static final double SHOOTER_TARGET_SPEED_LAUNCH_RPM = 3200.0;
+    public static final double SHOOTER_TARGET_SPEED_LAUNCH_RPM = 1500.0;
     /** Target shooter speed (RPM) for a high-speed shot (A button). */
-    public static final double SHOOTER_TARGET_SPEED_HIGH_RPM = 3500.0;
+    public static final double SHOOTER_TARGET_SPEED_HIGH_RPM = 3000.0;
     /** Target shooter speed (RPM) for an ultra-speed shot (long range). */
-    public static final double SHOOTER_TARGET_SPEED_ULTRA_RPM = 3800.0;
+    public static final double SHOOTER_TARGET_SPEED_ULTRA_RPM = 6000.0;
 
     /** Proportional gain for shooter speed control (simple P loop). */
     public static final double SHOOTER_KP = 0.003;
@@ -93,7 +93,7 @@ public final class Constants {
     // -----------------------------------------------------------------------
 
     /** Intake motor voltage when feeding balls toward the shooter. */
-    public static final double INTAKING_INTAKE_OUTPUT = -10;
+    public static final double INTAKING_INTAKE_OUTPUT = -11.5;
     /**
      * Loader target voltage when feeding balls toward the shooter.
      * Sign controls direction; use negative to invert.
@@ -134,9 +134,15 @@ public final class Constants {
     /** Power to keep the shooter halfway spun up so it's ready quickly. */
     public static final double FLYWHEEL_SPIN_UP_50_VOLTAGE = 6.0;
 
-    /** How long the intake stays on when we do a pulsing wiggle (shoot sequence). Total cycle is 2 seconds. */
+    /**
+     * How long the intake stays on when we do a pulsing wiggle (shoot sequence).
+     * Total cycle is 2 seconds.
+     */
     public static final double INTAKE_PULSE_ON_SECONDS = 1.0;
-    /** How long the intake stays off during the pulsing wiggle (shoot sequence). Total cycle is 2 seconds. */
+    /**
+     * How long the intake stays off during the pulsing wiggle (shoot sequence).
+     * Total cycle is 2 seconds.
+     */
     public static final double INTAKE_PULSE_OFF_SECONDS = 1.0;
 
     /**

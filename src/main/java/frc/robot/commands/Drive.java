@@ -41,8 +41,8 @@ public class Drive extends Command {
         MathUtil.applyDeadband(-controller.getRightX(), DRIVE_DEADBAND) * ROTATION_SCALING;
 
     double xSpeed = forwardBack;
-    // Invert rotation so pushing stick left turns robot left.
-    double zRotation = -rotation;
+    // Inverted turn mapping requested by driver.
+    double zRotation = rotation;
     driveSubsystem.driveArcade(xSpeed, zRotation);
   }
 
