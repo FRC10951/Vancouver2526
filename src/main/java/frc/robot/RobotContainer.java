@@ -108,8 +108,8 @@ public class RobotContainer {
     driverController.y().whileTrue(ioSubsystem.commandReverseFlywheelAndLoader());
     // Range buttons (recovered from pre-merge teleop):
     // A = normal/high shot, B = faster shot, RB = long-range shot.
-    driverController.a().whileTrue(createShootingSequence(ioSubsystem.commandLaunch()));
-    driverController.b().whileTrue(createShootingSequence(ioSubsystem.commandHighSpeedLaunch()));
+    driverController.a().whileTrue(createShootingSequence(ioSubsystem.commandHighSpeedLaunch()));
+    driverController.b().whileTrue(createShootingSequence(ioSubsystem.commandUltraSpeedLaunch()));
     driverController.rightBumper().whileTrue(createShootingSequence(ioSubsystem.commandUltraSpeedLaunch()));
     // Keep encoder reset available on start.
     driverController.start().onTrue(driveSubsystem.runOnce(driveSubsystem::resetEncoders));

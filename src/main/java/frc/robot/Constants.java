@@ -61,13 +61,13 @@ public final class Constants {
     /** Target shooter speed (RPM) for the main shooting/intake command. */
     public static final double SHOOTER_TARGET_SPEED_INTAKE_RPM = 1500.0;
     /** Target shooter speed (RPM) for the 50% spin-up toggle. */
-    public static final double SHOOTER_TARGET_SPEED_SPINUP50_RPM = 1000.0;
+    public static final double SHOOTER_TARGET_SPEED_SPINUP50_RPM = 500.0;
     /** Target shooter speed (RPM) when using the right-trigger toggle. */
     public static final double SHOOTER_TARGET_SPEED_TOGGLE_RPM = SHOOTER_TARGET_SPEED_INTAKE_RPM;
     /** Target shooter speed (RPM) for the main launch shot. */
-    public static final double SHOOTER_TARGET_SPEED_LAUNCH_RPM = 1500.0;
+    public static final double SHOOTER_TARGET_SPEED_LAUNCH_RPM = 1300.0;
     /** Target shooter speed (RPM) for a high-speed shot (A button). */
-    public static final double SHOOTER_TARGET_SPEED_HIGH_RPM = 3000.0;
+    public static final double SHOOTER_TARGET_SPEED_HIGH_RPM = 1900.0;
     /** Target shooter speed (RPM) for an ultra-speed shot (long range). */
     public static final double SHOOTER_TARGET_SPEED_ULTRA_RPM = 6000.0;
 
@@ -87,6 +87,21 @@ public final class Constants {
      * around this.
      */
     public static final double SHOOTER_HOLD_BASE_VOLTAGE = 7.0;
+
+    // -----------------------------------------------------------------------
+    // Intake speed control (encoder-based, same pattern as shooter)
+    // -----------------------------------------------------------------------
+
+    /** Target intake speed (RPM) for intake/feed behavior. Negative = intake in. */
+    public static final double INTAKE_TARGET_SPEED_RPM = -2500.0;
+    /** Proportional gain for intake speed control (simple P loop). */
+    public static final double INTAKE_KP = 0.0025;
+    /** Spin-up threshold fraction before switching to hold control. */
+    public static final double INTAKE_SPINUP_THRESHOLD_FRACTION = 0.8;
+    /** Absolute maximum intake voltage command. */
+    public static final double INTAKE_MAX_VOLTAGE = 11.5;
+    /** Baseline intake hold voltage (signed toward intake direction). */
+    public static final double INTAKE_HOLD_BASE_VOLTAGE = -6.9;
 
     // -----------------------------------------------------------------------
     // Intake / loader outputs (still open-loop on those motors)
