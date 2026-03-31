@@ -1,6 +1,6 @@
 # Running the Robot in Simulation
 
-This project is configured to run the robot code in the **WPILib simulation environment** (desktop) with the **Simulation GUI** and **Driver Station**, so you can test your code without hardware.
+This project is configured to run the robot code in the **WPILib simulation environment** (desktop) with the **Simulation GUI** and **Driver Station**, so you can test logic without hardware.
 
 > **Note:** This is the standard WPILib/Java simulation setup. If you were thinking of the legacy LabVIEW robot simulator, FRC Java projects use this WPILib simulator instead.
 
@@ -23,47 +23,52 @@ This project is configured to run the robot code in the **WPILib simulation envi
 3. When prompted, choose **Sim GUI** (and optionally **Driver Station**) and press OK.
 4. Wait for the build to finish. The **Simulation GUI** and **Driver Station** window will open.
 5. In the **Driver Station** panel, set the robot to **Teleop** (or **Autonomous**) and click **Enable**.
-6. Use your driver Xbox controller (USB port 0) to drive. SmartDashboard/Shuffleboard will show live data when connected (see below).
+6. Use your driver Xbox controller (USB port 0) or the Sim GUI keyboard joysticks. Connect **Shuffleboard** or **SmartDashboard** to **127.0.0.1** to see live NetworkTables data (see below).
 
 ### Option 2: Run from the Run and Debug view
 
 1. Open the **Run and Debug** view (Ctrl+Shift+D).
 2. Select **Simulate Robot Code** (or **WPILib Desktop Debug**) from the dropdown.
 3. Press the green play button (F5).
-4. Start the **Simulation GUI** and **Driver Station** if they are not started automatically (via WPILib commands or from the Sim GUI launcher).
+4. Start the **Simulation GUI** and **Driver Station** if they are not started automatically.
 5. Enable the robot in the Driver Station as above.
 
 ---
 
 ## FRC Dashboard (SmartDashboard / Shuffleboard)
 
-To view live data from the simulated robot:
+1. Start simulation and **enable** the robot in the Driver Station.
+2. Open **SmartDashboard** or **Shuffleboard** (**WPILib: Start Tool**).
+3. Connect to **127.0.0.1** (localhost) for simulation.
+4. **Organized keys** (prefixes group widgets in Shuffleboard / Sim GUI NetworkTables view):
 
-1. **Start the simulation** using one of the options above and **enable** the robot in the Driver Station.
-2. Open **SmartDashboard** or **Shuffleboard** from the WPILib extension (e.g. **WPILib: Start Tool** → SmartDashboard or Shuffleboard).
-3. **Connect to the simulator:**
-   - Set the **team number** to **127.0.0.1** (localhost), or enter your team number and ensure the tool is set to connect to the simulation host.
-   - SmartDashboard/Shuffleboard will connect over NetworkTables to the running sim.
-4. You should see:
-   - **CAN IDs** (from `Constants.getCanIdsList()`)
-   - **Left/Right Distance (m)** and **Left/Right Velocity (m/s)** from the drivetrain
-   - **Autonomous chooser** options
+| Prefix / key | Content |
+|--------------|---------|
+| **`Robot/`** | Battery (V), mode, simulation flag, brownout, DS/FMS attached, match time, alliance, station, sim hint, FPGA time (sim only), **Auto selected** string, **`Robot/Auto choices`** SendableChooser |
+| **`Robot/Info/CAN IDs`** | Same text as legacy `CAN IDs` (duplicate for older layouts) |
+| **`Drive/`** | Wheel odometry when encoders enabled; otherwise **`Drive/Odometry`** status string |
+| **`IO/`** | Shooter/intake RPM telemetry when `IO_PID_TELEMETRY` is true |
+
+Legacy key **`CAN IDs`** is still published for compatibility.
 
 ---
 
 ## What Is Simulated
 
-- **Drivetrain:** `DifferentialDrivetrainSim` (KitBot: dual CIM per side, 10.71:1, 6" wheels). Encoder positions and velocities are updated from the sim so autonomous and teleop drive logic behave as on a real robot.
-- **Driver Station:** Enable/disable, mode (Teleop/Auto/Test), so you can test teleop and auto.
-- **SmartDashboard/Shuffleboard:** Same NetworkTables data as on the robot when connected to localhost.
+- **Driver Station:** Enable/disable, mode (Teleop/Auto/Test), alliance/station when the FMS window supplies them — so you can exercise `getAutonomousCommand()` paths.
+- **Command scheduler:** Teleop bindings, autonomous routines, and **SendableChooser** selection behave like on the roboRIO.
+- **NetworkTables:** Same keys as on a real robot when the dashboard connects to localhost.
+- **Spark / Neo REV physics:** This project does **not** currently attach a full `DifferentialDriveSim` / encoder sim to `CANDriveSubsystem`. Drivetrain **motor outputs** still run through the sim stack, but **distance/velocity odometry** is only meaningful when `DRIVE_QUADRATURE_ENCODERS_WIRED` is true on real hardware (or if you add explicit sim encoders later). Treat drive auto timing as **time-based** tuning, same as on the real bot without wheel encoders.
 
 ---
 
 ## Simulation config files in this repo
 
-**Policy:** Files such as `simgui-ds.json` at the **project root** are **committed on purpose** so the team shares the same Simulation GUI / Driver Station layout (joystick indices, window positions, etc.). If you prefer purely local layouts, you can stop tracking them and add their names to `.gitignore` (WPILib’s default `.gitignore` already ignores some `simgui`-related patterns; adjust to match what your team wants).
+**Policy:** Files such as `simgui-ds.json` at the **project root** are **committed on purpose** so the team shares the same Simulation GUI / Driver Station layout (joystick indices, window positions, etc.).
 
-- **`simgui-ds.json`** — Driver Station simulation settings generated when you run sim. Commit when you want everyone to inherit the same defaults; delete from git tracking if each student keeps their own.
+- **`simgui.json`** — Sim GUI layout (NetworkTables / Plot windows). `Plot <0>` is enabled by default so you can graph e.g. `Robot/Battery (V)` after adding it to the plot.
+- **`simgui-ds.json`** — Keyboard joystick mappings for sim.
+- **`simgui-window.json`** — Window positions.
 
 ---
 
@@ -72,15 +77,15 @@ To view live data from the simulated robot:
 | Issue | What to do |
 |-------|------------|
 | "Desktop support" or sim not found | Ensure `includeDesktopSupport = true` and `wpi.sim.addGui().defaultEnabled = true` in `build.gradle`, then reload the project. |
-| Driver Station doesn’t enable | Make sure the **Simulation GUI** is running and the robot program has started (e.g. "Simulate Robot Code" or "WPILib Desktop Debug"). |
-| Dashboard doesn’t show data | Connect to **127.0.0.1** (or the correct sim host) in SmartDashboard/Shuffleboard and ensure the robot is **Enabled** in the Driver Station. |
-| Controller not responding | Plug the Xbox controller into **USB port 0** (driver port). Check the Sim GUI’s **Joysticks** tab to confirm it’s detected. |
+| Driver Station doesn’t enable | Make sure the **Simulation GUI** is running and the robot program has started. |
+| Dashboard doesn’t show data | Connect to **127.0.0.1** and ensure the robot is **Enabled**. Add widgets for **`Robot/...`** keys. |
+| Auto chooser not found | The chooser is published as **`Robot/Auto choices`** (not `Auto choices`). |
+| Controller not responding | USB gamepad on port 0, or use **Joysticks** tab in Sim GUI. |
 
 ---
 
 ## Summary
 
-1. Run **WPILib: Simulate Robot Code** (or **Simulate Robot Code** from Run and Debug).
-2. Open the **Simulation GUI** and **Driver Station** (if not automatic).
-3. **Enable** the robot in the Driver Station (Teleop or Autonomous).
-4. Open **SmartDashboard** or **Shuffleboard** and connect to **127.0.0.1** to view the FRC dashboard with live data from your code.
+1. Run **WPILib: Simulate Robot Code**.
+2. Open **Sim GUI** + **Driver Station**; **Enable** teleop or auto.
+3. Connect **Shuffleboard/SmartDashboard** to **127.0.0.1** and use the **`Robot/`**, **`Drive/`**, and **`IO/`** trees for tuning and debugging.

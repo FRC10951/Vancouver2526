@@ -38,36 +38,50 @@ public class RobotContainer {
     configureBindings();
 
     autoChooser.setDefaultOption("Timed auto (full)", autonomousCommand());
-    autoChooser.addOption("Do Nothing", Commands.none());
+    autoChooser.addOption("Do Nothing", Commands.none().withName("Chooser: Do Nothing"));
     autoChooser.addOption("Shoot only", chooserShootOnly());
     autoChooser.addOption("Drive forward 1.5s", chooserDriveForwardShort());
     autoChooser.addOption("Shoot then forward 1.5s", chooserShootThenForwardShort());
     autoChooser.addOption("Drive backward 1.5s", chooserDriveBackwardShort());
     autoChooser.addOption(
         "Drive forward 2s",
-        new AutoDrive(driveSubsystem, CHOOSER_DRIVE_2S_SPEED, 0.0).withTimeout(CHOOSER_DRIVE_2S_SECONDS));
-    SmartDashboard.putData("Auto choices", autoChooser);
+        new AutoDrive(driveSubsystem, CHOOSER_DRIVE_2S_SPEED, 0.0)
+            .withTimeout(CHOOSER_DRIVE_2S_SECONDS)
+            .withName("Chooser: Drive forward 2s"));
+    SmartDashboard.putData("Robot/Auto choices", autoChooser);
+  }
+
+  /** Publishes chooser selection for dashboards (command {@link Command#getName()}). */
+  public void publishDashboardPeriodic() {
+    Command sel = autoChooser.getSelected();
+    SmartDashboard.putString("Robot/Auto selected", sel != null ? sel.getName() : "(none)");
   }
 
   private Command chooserShootOnly() {
-    return ioSubsystem.commandLaunch().withTimeout(CHOOSER_SHOOT_ONLY_SECONDS);
+    return ioSubsystem
+        .commandLaunch()
+        .withTimeout(CHOOSER_SHOOT_ONLY_SECONDS)
+        .withName("Chooser: Shoot only");
   }
 
   private Command chooserDriveForwardShort() {
     return new AutoDrive(driveSubsystem, CHOOSER_SIMPLE_FWD_SPEED, 0.0)
-        .withTimeout(CHOOSER_SIMPLE_FWD_SECONDS);
+        .withTimeout(CHOOSER_SIMPLE_FWD_SECONDS)
+        .withName("Chooser: Drive forward 1.5s");
   }
 
   private Command chooserShootThenForwardShort() {
     return Commands.sequence(
-        ioSubsystem.commandLaunch().withTimeout(CHOOSER_SHOOT_THEN_FWD_SHOOT_SECONDS),
-        new AutoDrive(driveSubsystem, CHOOSER_SIMPLE_FWD_SPEED, 0.0)
-            .withTimeout(CHOOSER_SIMPLE_FWD_SECONDS));
+            ioSubsystem.commandLaunch().withTimeout(CHOOSER_SHOOT_THEN_FWD_SHOOT_SECONDS),
+            new AutoDrive(driveSubsystem, CHOOSER_SIMPLE_FWD_SPEED, 0.0)
+                .withTimeout(CHOOSER_SIMPLE_FWD_SECONDS))
+        .withName("Chooser: Shoot then forward 1.5s");
   }
 
   private Command chooserDriveBackwardShort() {
     return new AutoDrive(driveSubsystem, CHOOSER_SIMPLE_REV_SPEED, 0.0)
-        .withTimeout(CHOOSER_SIMPLE_REV_SECONDS);
+        .withTimeout(CHOOSER_SIMPLE_REV_SECONDS)
+        .withName("Chooser: Drive backward 1.5s");
   }
 
   private Command autonomousRedStation1() {
@@ -164,7 +178,8 @@ public class RobotContainer {
 
         new AutoDrive(driveSubsystem, 0.0, AUTO_TURN3_ROTATION).withTimeout(AUTO_TURN3_SECONDS),
 
-        ioSubsystem.commandLaunch().withTimeout(AUTO_FINAL_SHOOT_SECONDS));
+        ioSubsystem.commandLaunch().withTimeout(AUTO_FINAL_SHOOT_SECONDS))
+        .withName("Timed auto (full)");
   }
 
   // ------------------------------------------------------------
@@ -175,7 +190,7 @@ public class RobotContainer {
    * {@code autonomous*Station*}). Five
    * slots are {@link Commands#none()} until you fill them; Blue 1 runs
    * {@link #autonomousCommand()}.
-   * If alliance or station is unknown, uses SmartDashboard {@code Auto choices}.
+   * If alliance or station is unknown, uses SmartDashboard {@code Robot/Auto choices}.
    */
   public Command getAutonomousCommand() {
     Optional<Alliance> alliance = DriverStation.getAlliance();

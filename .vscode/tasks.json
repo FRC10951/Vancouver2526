@@ -1,0 +1,24 @@
+{
+  // Custom task to run WPILib Java simulation using the debug variant.
+  // You can invoke this from the Run Task menu or bind it to a key.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "WPILib: simulateExternalJavaDebug",
+      "type": "shell",
+      "command": "./gradlew",
+      "args": [
+        "simulateExternalJavaDebug"
+      ],
+      "options": {
+        "cwd": "C:\\Users\\SSIS\\Downloads\\WPILib Projects\\KitBot\\Vancouver2526"
+      },
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      }
+    }
+  ]
+}
+

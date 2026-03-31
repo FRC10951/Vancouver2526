@@ -50,13 +50,13 @@ public final class Constants {
     // -----------------------------------------------------------------------
 
     /** Target shooter speed (RPM) for the main shooting/intake command. */
-    public static final double SHOOTER_TARGET_SPEED_INTAKE_RPM = 1500.0;
+    public static final double SHOOTER_TARGET_SPEED_INTAKE_RPM = 2000.0;
     /** Target shooter speed (RPM) for the 50% spin-up toggle. */
-    public static final double SHOOTER_TARGET_SPEED_SPINUP50_RPM = 1000.0;
+    public static final double SHOOTER_TARGET_SPEED_SPINUP50_RPM = 2000.0;
     /** Target shooter speed (RPM) when using the right-trigger toggle. */
     public static final double SHOOTER_TARGET_SPEED_TOGGLE_RPM = SHOOTER_TARGET_SPEED_INTAKE_RPM;
     /** Target shooter speed (RPM) for the main launch shot. */
-    public static final double SHOOTER_TARGET_SPEED_LAUNCH_RPM = 1300.0;
+    public static final double SHOOTER_TARGET_SPEED_LAUNCH_RPM = 2000.0;
     /** Target shooter speed (RPM) for a high-speed shot (A button). */
     public static final double SHOOTER_TARGET_SPEED_HIGH_RPM = 1900.0;
     /** Target shooter speed (RPM) for an ultra-speed shot (long range). */
@@ -190,7 +190,8 @@ public final class Constants {
   }
 
   /**
-   * Timing and open-loop speeds for {@link frc.robot.RobotContainer#autonomousCommand()}.
+   * Timing and open-loop speeds for
+   * {@link frc.robot.RobotContainer#autonomousCommand()}.
    * Drive segments use {@link frc.robot.commands.AutoDrive} with timeouts only
    * (not encoder distance). Tune times on the field.
    */
@@ -211,7 +212,8 @@ public final class Constants {
     public static final double AUTO_FINAL_SHOOT_SECONDS = 5.0;
 
     /**
-     * Short presets for the SmartDashboard {@code Auto choices} SendableChooser
+     * Short presets for the SmartDashboard {@code Robot/Auto choices}
+     * SendableChooser
      * (time-based only; tune on the field).
      */
     public static final double CHOOSER_SHOOT_ONLY_SECONDS = 4.0;

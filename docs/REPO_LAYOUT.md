@@ -26,5 +26,6 @@ Quick map of this KitBot project so new contributors know where things live.
 
 ## Related reading
 
-- [SIMULATION.md](SIMULATION.md) — Running desktop simulation and sim config policy.
+- [SIMULATION.md](SIMULATION.md) — Running desktop simulation, Sim GUI layout, and **`Robot/` / `Drive/` / `IO/`** dashboard keys.
+- [IO_PID.md](IO_PID.md) — Shooter and intake velocity PID + feedforward tuning.
 - [README.md](../README.md) — Robot behavior, CAN map, and operator controls.

@@ -7,7 +7,12 @@ import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.wpilibj.RobotBase;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
@@ -38,6 +43,20 @@ public class CANDriveSubsystem extends SubsystemBase {
 
   // private final EncoderSim leftEncoderSim;
   // private final EncoderSim rightEncoderSim;
+
+  /** 2D field visualization for simulation and dashboards. */
+  private final Field2d field2d = new Field2d();
+
+  // Simple internal pose integrator used only in simulation when drive encoders are
+  // not wired. This avoids touching real encoders but lets teams see motion on
+  // the 2D field.
+  private Pose2d simPose = new Pose2d();
+  private double lastSimUpdateSeconds = Timer.getFPGATimestamp();
+  private double lastSimXSpeed = 0.0;
+  private double lastSimZRotation = 0.0;
+  // Tunable constants for how fast the simulated robot moves at full stick.
+  private static final double SIM_MAX_LINEAR_METERS_PER_SEC = 3.0;
+  private static final double SIM_MAX_ANGULAR_RAD_PER_SEC = Math.PI; // ~180°/s at full turn
 
   private static final double METERS_PER_ROTATION = (Math.PI * WHEEL_DIAMETER_METERS) / GEAR_RATIO;
 
@@ -93,14 +112,43 @@ public class CANDriveSubsystem extends SubsystemBase {
 
   @Override
   public void periodic() {
+    // Publish the Field2d so Shuffleboard / Sim GUI can attach a 2D field widget.
+    SmartDashboard.putData("Drive/Field", field2d);
+
     if (DRIVE_QUADRATURE_ENCODERS_WIRED) {
-      SmartDashboard.putNumber("Left Distance (m)", getLeftDistanceMeters());
-      SmartDashboard.putNumber("Right Distance (m)", getRightDistanceMeters());
-      SmartDashboard.putNumber("Left Velocity (m/s)", getLeftVelocityMetersPerSecond());
-      SmartDashboard.putNumber("Right Velocity (m/s)", getRightVelocityMetersPerSecond());
+      SmartDashboard.putNumber("Drive/Left distance (m)", getLeftDistanceMeters());
+      SmartDashboard.putNumber("Drive/Right distance (m)", getRightDistanceMeters());
+      SmartDashboard.putNumber("Drive/Left velocity (m/s)", getLeftVelocityMetersPerSecond());
+      SmartDashboard.putNumber("Drive/Right velocity (m/s)", getRightVelocityMetersPerSecond());
+
+      // Simple pose estimate assuming straight-line motion and heading = 0.
+      double x = getAverageDistanceMeters();
+      field2d.setRobotPose(new Pose2d(x, 0.0, new Rotation2d()));
+    } else if (RobotBase.isSimulation()) {
+      // Sim-only pose integration based on last commanded arcade inputs. This does
+      // not touch real encoders and is only meant for visualization.
+      double now = Timer.getFPGATimestamp();
+      double dt = now - lastSimUpdateSeconds;
+      lastSimUpdateSeconds = now;
+      if (dt > 0.0 && dt < 0.1) {
+        double linear = lastSimXSpeed * SIM_MAX_LINEAR_METERS_PER_SEC;
+        double angular = lastSimZRotation * SIM_MAX_ANGULAR_RAD_PER_SEC;
+
+        double newHeading = simPose.getRotation().getRadians() + angular * dt;
+        double dx = linear * dt * Math.cos(newHeading);
+        double dy = linear * dt * Math.sin(newHeading);
+        simPose =
+            new Pose2d(
+                simPose.getX() + dx, simPose.getY() + dy, new Rotation2d(newHeading));
+      }
+      field2d.setRobotPose(simPose);
+
+      SmartDashboard.putString(
+          "Drive/Odometry",
+          "Sim-only pose (no real drive encoders wired)");
     } else {
       SmartDashboard.putString(
-          "Drive odometry",
+          "Drive/Odometry",
           "Off (set DRIVE_QUADRATURE_ENCODERS_WIRED when encoders are wired)");
     }
   }
@@ -127,6 +175,8 @@ public class CANDriveSubsystem extends SubsystemBase {
    * @param zRotation Rotation rate [-1, 1]
    */
   public void driveArcade(double xSpeed, double zRotation) {
+    lastSimXSpeed = xSpeed;
+    lastSimZRotation = zRotation;
     drive.arcadeDrive(xSpeed, zRotation);
   }
 

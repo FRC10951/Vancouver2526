@@ -127,9 +127,16 @@ public final class ConstantsEditorApp extends JFrame {
     field(p, g, "ROTATION_SCALING", "double", "Rotation stick scaling");
     field(p, g, "DRIVE_DEADBAND", "double", "Drive deadband");
 
-    row(p, g, "Speed loop gains (shooter / intake)", false);
-    field(p, g, "SHOOTER_KP", "double", "Shooter P gain");
-    field(p, g, "INTAKE_KP", "double", "Intake P gain");
+    row(p, g, "Speed loop gains", false);
+    g.gridwidth = 2;
+    g.gridx = 0;
+    p.add(
+        new JLabel(
+            "<html><i>Shooter and intake <b>PID + feedforward</b> constants are on the"
+                + " <b>IO / Shooter</b> tab.</i></html>"),
+        g);
+    g.gridy++;
+    g.gridwidth = 1;
 
     row(p, g, "Everything else", true);
     g.gridwidth = 2;
@@ -159,9 +166,17 @@ public final class ConstantsEditorApp extends JFrame {
     field(p, g, "DRIVE_MOTOR_CURRENT_LIMIT", "int", "Drive motor current limit (A)");
     field(p, g, "WHEEL_DIAMETER_METERS", "double", "Wheel diameter (m)");
     field(p, g, "GEAR_RATIO", "double", "Motor-to-wheel gear ratio");
-    field(p, g, "DRIVE_TRACK_WIDTH_METERS", "double", "Track width (m)");
     field(p, g, "INTAKE_WIGGLE_SPEED", "double", "Intake wiggle speed");
-    field(p, g, "AUTO_TURN_DISTANCE_SCALAR", "double", "Encoder turn distance scalar");
+    g.gridwidth = 2;
+    g.gridx = 0;
+    p.add(
+        new JLabel(
+            "<html><i>DRIVE_QUADRATURE_ENCODERS_WIRED is a <code>boolean</code> in Constants.java"
+                + " (not edited here). Set <code>true</code> when quadrature encoders are wired to"
+                + " drive Spark data ports.</i></html>"),
+        g);
+    g.gridy++;
+    g.gridwidth = 1;
     return p;
   }
 
@@ -196,17 +211,27 @@ public final class ConstantsEditorApp extends JFrame {
     field(p, g, "SHOOTER_TARGET_SPEED_LAUNCH_RPM", "double", "Shooter RPM (launch)");
     field(p, g, "SHOOTER_TARGET_SPEED_HIGH_RPM", "double", "Shooter RPM (high / A button)");
     field(p, g, "SHOOTER_TARGET_SPEED_ULTRA_RPM", "double", "Shooter RPM (ultra / long range)");
-    field(p, g, "SHOOTER_KP", "double", "Shooter P gain");
+    field(p, g, "SHOOTER_PID_KP", "double", "Shooter PID kP");
+    field(p, g, "SHOOTER_PID_KI", "double", "Shooter PID kI");
+    field(p, g, "SHOOTER_PID_KD", "double", "Shooter PID kD");
+    field(p, g, "SHOOTER_FF_KS", "double", "Shooter FF kS (static)");
+    field(p, g, "SHOOTER_FF_KV", "double", "Shooter FF kV (V·s/rot)");
+    field(p, g, "SHOOTER_FF_KA", "double", "Shooter FF kA (accel)");
+    field(p, g, "SHOOTER_PID_INTEGRATOR_MAX", "double", "Shooter integrator max");
     field(p, g, "SHOOTER_SPINUP_THRESHOLD_FRACTION", "double", "Shooter spin-up threshold (0–1)");
     field(p, g, "SHOOTER_MAX_VOLTAGE", "double", "Shooter max voltage");
-    field(p, g, "SHOOTER_HOLD_BASE_VOLTAGE", "double", "Shooter hold base voltage");
 
     row(p, g, "Intake speed control", true);
     field(p, g, "INTAKE_TARGET_SPEED_RPM", "double", "Intake target RPM (negative = in)");
-    field(p, g, "INTAKE_KP", "double", "Intake P gain");
+    field(p, g, "INTAKE_PID_KP", "double", "Intake PID kP");
+    field(p, g, "INTAKE_PID_KI", "double", "Intake PID kI");
+    field(p, g, "INTAKE_PID_KD", "double", "Intake PID kD");
+    field(p, g, "INTAKE_FF_KS", "double", "Intake FF kS");
+    field(p, g, "INTAKE_FF_KV", "double", "Intake FF kV (V·s/rot)");
+    field(p, g, "INTAKE_FF_KA", "double", "Intake FF kA");
+    field(p, g, "INTAKE_PID_INTEGRATOR_MAX", "double", "Intake integrator max");
     field(p, g, "INTAKE_SPINUP_THRESHOLD_FRACTION", "double", "Intake spin-up threshold");
     field(p, g, "INTAKE_MAX_VOLTAGE", "double", "Intake max voltage");
-    field(p, g, "INTAKE_HOLD_BASE_VOLTAGE", "double", "Intake hold base voltage");
 
     row(p, g, "Open-loop & timing", true);
     field(p, g, "INTAKING_INTAKE_OUTPUT", "double", "Intaking intake voltage");
@@ -255,15 +280,31 @@ public final class ConstantsEditorApp extends JFrame {
     g.anchor = GridBagConstraints.WEST;
     g.gridx = 0;
     g.gridy = 0;
-    row(p, g, "AutoConstants (tune for field & robot)", true);
-    field(p, g, "CENTER_TO_SHOOT_DRIVE_METERS", "double", "Center line → shoot position (m)");
-    field(p, g, "CENTER_TO_SHOOT_SPEED", "double", "Center-to-shoot speed (0–1)");
-    field(p, g, "CENTER_TO_SHOOT_LAUNCH_SECONDS", "double", "Center auto launch time (s)");
-    field(p, g, "BASIC_SHOOT_SECONDS", "double", "Basic auto shoot duration (s)");
-    field(p, g, "TURN_30_STARBOARD_SPEED", "double", "30° turn rate (0–1, + = right)");
-    field(p, g, "TURN_30_STARBOARD_SECONDS", "double", "30° turn duration (s)");
-    field(p, g, "DRIVE_AND_INTAKE_SECONDS", "double", "Drive+intake duration (s)");
-    field(p, g, "DRIVE_AND_INTAKE_SPEED", "double", "Drive+intake forward speed");
+    row(p, g, "AutoConstants — main autonomous (timed AutoDrive segments)", true);
+    field(p, g, "AUTO_INITIAL_SHOOT_SECONDS", "double", "Initial shoot (s)");
+    field(p, g, "AUTO_FWD1_SPEED", "double", "Forward 1 speed (0–1)");
+    field(p, g, "AUTO_FWD1_SECONDS", "double", "Forward 1 duration (s)");
+    field(p, g, "AUTO_TURN1_ROTATION", "double", "Turn 1 rotation (-1..1)");
+    field(p, g, "AUTO_TURN1_SECONDS", "double", "Turn 1 duration (s)");
+    field(p, g, "AUTO_FWD2_SPEED", "double", "Forward 2 speed (0–1)");
+    field(p, g, "AUTO_FWD2_SECONDS", "double", "Forward 2 duration (s)");
+    field(p, g, "AUTO_TURN2_ROTATION", "double", "Turn 2 rotation (-1..1)");
+    field(p, g, "AUTO_TURN2_SECONDS", "double", "Turn 2 duration (s)");
+    field(p, g, "AUTO_FWD_INTAKE_SPEED", "double", "Forward+intake speed (0–1)");
+    field(p, g, "AUTO_FWD_INTAKE_SECONDS", "double", "Forward+intake deadline (s)");
+    field(p, g, "AUTO_TURN3_ROTATION", "double", "Turn 3 rotation (-1..1)");
+    field(p, g, "AUTO_TURN3_SECONDS", "double", "Turn 3 duration (s)");
+    field(p, g, "AUTO_FINAL_SHOOT_SECONDS", "double", "Final shoot (s)");
+
+    row(p, g, "Dashboard short autos (SendableChooser)", true);
+    field(p, g, "CHOOSER_SHOOT_ONLY_SECONDS", "double", "Shoot only (s)");
+    field(p, g, "CHOOSER_SIMPLE_FWD_SPEED", "double", "Short forward speed (0–1)");
+    field(p, g, "CHOOSER_SIMPLE_FWD_SECONDS", "double", "Short forward (s)");
+    field(p, g, "CHOOSER_SIMPLE_REV_SPEED", "double", "Short backward speed (0–1, neg)");
+    field(p, g, "CHOOSER_SIMPLE_REV_SECONDS", "double", "Short backward (s)");
+    field(p, g, "CHOOSER_SHOOT_THEN_FWD_SHOOT_SECONDS", "double", "Shoot-then-drive shoot (s)");
+    field(p, g, "CHOOSER_DRIVE_2S_SPEED", "double", "Drive 2s speed");
+    field(p, g, "CHOOSER_DRIVE_2S_SECONDS", "double", "Drive 2s duration (s)");
     return p;
   }
 

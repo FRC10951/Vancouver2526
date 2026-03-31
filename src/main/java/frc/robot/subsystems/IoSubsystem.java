@@ -68,6 +68,10 @@ public class IoSubsystem extends SubsystemBase {
   private double shooterPidLastSetpointRpm = Double.NaN;
   private double intakePidLastSetpointRpm = Double.NaN;
 
+  // Simple jam-detection state.
+  private boolean shooterJamDetected = false;
+  private boolean intakeJamDetected = false;
+
   /**
    * When true, {@link #updateShooterControl()} applies {@link #flywheelOpenLoopVolts} and skips PID
    * (used for jam clear where commands run before periodic would otherwise zero the motor).
@@ -75,6 +79,14 @@ public class IoSubsystem extends SubsystemBase {
   private boolean flywheelOpenLoopOverride = false;
 
   private double flywheelOpenLoopVolts = 0.0;
+
+  // Thresholds for jam heuristics (RPM error and time).
+  private static final double SHOOTER_JAM_ERROR_RPM = 500.0;
+  private static final double INTAKE_JAM_ERROR_RPM = 500.0;
+  private static final double JAM_DEBOUNCE_SECONDS = 0.25;
+
+  private double shooterJamSinceSeconds = Double.NaN;
+  private double intakeJamSinceSeconds = Double.NaN;
 
   public IoSubsystem() {
     this(IO_CAN_IDS);
@@ -106,6 +118,10 @@ public class IoSubsystem extends SubsystemBase {
     // Keep shooter speed control running every cycle whenever it is enabled.
     updateShooterControl();
     updateIntakeControl();
+
+    // Publish jam state for driver / pit visibility.
+    SmartDashboard.putBoolean("IO/Shooter jam", shooterJamDetected);
+    SmartDashboard.putBoolean("IO/Intake jam", intakeJamDetected);
   }
 
   /** Set flywheel motor by voltage and loader by duty cycle (0?1). */
@@ -176,6 +192,8 @@ public class IoSubsystem extends SubsystemBase {
     intakePidLastSetpointRpm = Double.NaN;
     intakeVelocityLoop.reset();
     flywheelOpenLoopOverride = false;
+    shooterJamDetected = false;
+    intakeJamDetected = false;
   }
 
   public Command commandStop() {
@@ -211,6 +229,8 @@ public class IoSubsystem extends SubsystemBase {
     if (!shooterEnabled || shooterTargetSpeedRpm <= 0.0) {
       shooterVelocityLoop.reset();
       flywheelMotor.setVoltage(0.0);
+      shooterJamDetected = false;
+      shooterJamSinceSeconds = Double.NaN;
       return;
     }
 
@@ -222,10 +242,20 @@ public class IoSubsystem extends SubsystemBase {
       flywheelMotor.setVoltage(volts);
     }
 
+    // Jam heuristic: large sustained RPM error in the commanded direction.
+    double error = shooterTargetSpeedRpm - currentRpm;
+    boolean errorLargeAndSameSign =
+        Math.abs(error) > SHOOTER_JAM_ERROR_RPM && Math.signum(error) == Math.signum(shooterTargetSpeedRpm);
+    updateShooterJamState(errorLargeAndSameSign);
+
     if (IO_PID_TELEMETRY) {
-      SmartDashboard.putNumber("Shooter RPM", currentRpm);
-      SmartDashboard.putNumber("Shooter RPM target", shooterTargetSpeedRpm);
-      SmartDashboard.putNumber("Shooter RPM err", shooterTargetSpeedRpm - currentRpm);
+      SmartDashboard.putNumber("IO/Shooter RPM", currentRpm);
+      SmartDashboard.putNumber("IO/Shooter RPM target", shooterTargetSpeedRpm);
+      SmartDashboard.putNumber("IO/Shooter RPM err", shooterTargetSpeedRpm - currentRpm);
+      // Sanity check: if commanding reverse RPM, flag if measured sign disagrees.
+      boolean signMismatch =
+          shooterTargetSpeedRpm < 0.0 && currentRpm > 0.0;
+      SmartDashboard.putBoolean("IO/Warning/Shooter sign mismatch", signMismatch);
     }
   }
 
@@ -233,6 +263,8 @@ public class IoSubsystem extends SubsystemBase {
     if (!intakeEnabled || intakeTargetSpeedRpm == 0.0) {
       intakeVelocityLoop.reset();
       intakeMotor.setVoltage(0.0);
+      intakeJamDetected = false;
+      intakeJamSinceSeconds = Double.NaN;
       return;
     }
 
@@ -244,11 +276,49 @@ public class IoSubsystem extends SubsystemBase {
       intakeMotor.setVoltage(volts);
     }
 
+    // Jam heuristic: intake target is usually negative; look for large error with same sign.
+    double error = intakeTargetSpeedRpm - currentRpm;
+    boolean errorLargeAndSameSign =
+        Math.abs(error) > INTAKE_JAM_ERROR_RPM && Math.signum(error) == Math.signum(intakeTargetSpeedRpm);
+    updateIntakeJamState(errorLargeAndSameSign);
+
     if (IO_PID_TELEMETRY) {
-      SmartDashboard.putNumber("Intake RPM", currentRpm);
-      SmartDashboard.putNumber("Intake RPM target", intakeTargetSpeedRpm);
-      SmartDashboard.putNumber("Intake RPM err", intakeTargetSpeedRpm - currentRpm);
+      SmartDashboard.putNumber("IO/Intake RPM", currentRpm);
+      SmartDashboard.putNumber("IO/Intake RPM target", intakeTargetSpeedRpm);
+      SmartDashboard.putNumber("IO/Intake RPM err", intakeTargetSpeedRpm - currentRpm);
+      // Sanity check: intake target sign should generally match INTAKE_TARGET_SPEED_RPM.
+      boolean signMismatch =
+          Math.signum(intakeTargetSpeedRpm) != Math.signum(INTAKE_TARGET_SPEED_RPM);
+      SmartDashboard.putBoolean("IO/Warning/Intake sign mismatch", signMismatch);
     }
+  }
+
+  private void updateShooterJamState(boolean candidateJam) {
+    double now = edu.wpi.first.wpilibj.Timer.getFPGATimestamp();
+    if (!candidateJam) {
+      shooterJamDetected = false;
+      shooterJamSinceSeconds = Double.NaN;
+      return;
+    }
+    if (Double.isNaN(shooterJamSinceSeconds)) {
+      shooterJamSinceSeconds = now;
+      return;
+    }
+    shooterJamDetected = (now - shooterJamSinceSeconds) >= JAM_DEBOUNCE_SECONDS;
+  }
+
+  private void updateIntakeJamState(boolean candidateJam) {
+    double now = edu.wpi.first.wpilibj.Timer.getFPGATimestamp();
+    if (!candidateJam) {
+      intakeJamDetected = false;
+      intakeJamSinceSeconds = Double.NaN;
+      return;
+    }
+    if (Double.isNaN(intakeJamSinceSeconds)) {
+      intakeJamSinceSeconds = now;
+      return;
+    }
+    intakeJamDetected = (now - intakeJamSinceSeconds) >= JAM_DEBOUNCE_SECONDS;
   }
 
   public Command commandSpeeds(double flywheelVoltage, double intakeOutput, double loaderOutput) {
@@ -320,13 +390,36 @@ public class IoSubsystem extends SubsystemBase {
    * interrupts.
    */
   public Command commandIntake() {
-    return Commands.run(
-        () -> {
-          disableShooter();
-          enableIntakeAtSpeed(INTAKE_TARGET_SPEED_RPM);
-          loaderMotor.set(INTAKING_LOADER_OUTPUT);
-        },
-        this)
+    Command base =
+        Commands.run(
+            () -> {
+              disableShooter();
+              enableIntakeAtSpeed(INTAKE_TARGET_SPEED_RPM);
+              loaderMotor.set(INTAKING_LOADER_OUTPUT);
+            },
+            this);
+
+    // If intake jam is detected while intaking, briefly reverse to clear it.
+    Command unjam =
+        this.run(
+                () -> {
+                  if (intakeJamDetected) {
+                    intakeMotor.setVoltage(-INTAKING_INTAKE_OUTPUT);
+                    loaderMotor.set(-INTAKING_LOADER_OUTPUT);
+                  }
+                })
+            .withTimeout(0.3);
+
+    Command wrapped =
+        base
+            .until(() -> intakeJamDetected)
+            .andThen(unjam)
+            .andThen(
+                () ->
+                    SmartDashboard.putString(
+                        "IO/Last jam action", "Intake jam: auto clear sequence executed"));
+
+    return wrapped
         .withName("Intake")
         .finallyDo(interrupted -> {
           disableIntake();
@@ -352,18 +445,27 @@ public class IoSubsystem extends SubsystemBase {
             .withTimeout(INTAKE_SPIN_UP_SECONDS),
         // Then run shooter at speed while feeding intake and loader.
         this.run(
-            () -> {
-              enableShooterAtSpeed(SHOOTER_TARGET_SPEED_LAUNCH_RPM);
-              // Only feed balls once shooter is near target speed.
-              double current = getShooterSpeedRpm();
-              boolean atSpeed = current >= SHOOTER_TARGET_SPEED_LAUNCH_RPM * SHOOTER_SPINUP_THRESHOLD_FRACTION;
-              loaderMotor.set(atSpeed ? LAUNCHING_LOADER_OUTPUT : 0.0);
-              if (atSpeed) {
-                enableIntakeAtSpeed(INTAKE_TARGET_SPEED_RPM);
-              } else {
-                disableIntake();
-              }
-            })
+                () -> {
+                  enableShooterAtSpeed(SHOOTER_TARGET_SPEED_LAUNCH_RPM);
+                  // Only feed balls once shooter is near target speed.
+                  double current = getShooterSpeedRpm();
+                  boolean atSpeed =
+                      current
+                          >= SHOOTER_TARGET_SPEED_LAUNCH_RPM
+                              * SHOOTER_SPINUP_THRESHOLD_FRACTION;
+                  loaderMotor.set(atSpeed ? LAUNCHING_LOADER_OUTPUT : 0.0);
+                  if (atSpeed) {
+                    enableIntakeAtSpeed(INTAKE_TARGET_SPEED_RPM);
+                  } else {
+                    disableIntake();
+                  }
+                })
+            .until(() -> shooterJamDetected || intakeJamDetected)
+            .andThen(commandEject().withTimeout(0.4))
+            .andThen(
+                () ->
+                    SmartDashboard.putString(
+                        "IO/Last jam action", "Launch jam: auto eject sequence executed"))
             .finallyDo(interrupted -> {
               // Stop loader and intake when command ends; shooter only stays on if the
               // X-button spin-up mode is enabled (persistent spin-up).

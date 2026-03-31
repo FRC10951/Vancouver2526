@@ -2,7 +2,10 @@ package frc.robot;
 
 import edu.wpi.first.hal.HAL;
 import edu.wpi.first.hal.FRCNetComm.tResourceType;
+import edu.wpi.first.wpilibj.DataLogManager;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
@@ -16,12 +19,15 @@ public class Robot extends TimedRobot {
   private RobotContainer m_robotContainer;
 
   @Override
-  
   public void robotInit() {
+    DataLogManager.start();
+    DriverStation.startDataLog(DataLogManager.getLog());
+
     m_robotContainer = new RobotContainer();
 
     String canIds = Constants.getCanIdsList();
     System.out.println(canIds);
+    SmartDashboard.putString("Robot/Info/CAN IDs", canIds);
     SmartDashboard.putString("CAN IDs", canIds);
 
     HAL.report(tResourceType.kResourceType_Framework, 10);
@@ -30,6 +36,10 @@ public class Robot extends TimedRobot {
   @Override
   public void robotPeriodic() {
     CommandScheduler.getInstance().run();
+    DashboardTelemetry.publishRobotState();
+    if (m_robotContainer != null) {
+      m_robotContainer.publishDashboardPeriodic();
+    }
   }
 
   @Override
@@ -56,5 +66,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void simulationPeriodic() {
+    DashboardTelemetry.publishSimulationBanner();
+    SmartDashboard.putNumber("Robot/Sim time (s)", Timer.getFPGATimestamp());
   }
 }
