@@ -19,20 +19,15 @@ public final class Constants {
     public static final double GEAR_RATIO = 10.71;
 
     /**
-     * Approximate track width (meters) used for encoder-only in-place turns.
-     * Measure center-to-center distance between left and right wheels for best
-     * results.
+     * {@code true} when quadrature encoders are wired to the drive Spark MAX data
+     * ports (required for brushed CIM odometry). Brushless Neos use internal
+     * encoders; without external encoders on CIM drive, distance/velocity
+     * readings are not meaningful — set {@code false}.
      */
-    public static final double DRIVE_TRACK_WIDTH_METERS = 0.55;
+    public static final boolean DRIVE_QUADRATURE_ENCODERS_WIRED = false;
 
     /** How fast the intake wiggles back and forth to unjam balls. */
     public static final double INTAKE_WIGGLE_SPEED = 0.46;
-
-    /**
-     * Scalar applied to encoder-only turn distance calculations.
-     * If the robot over-rotates, decrease this; if it under-rotates, increase it.
-     */
-    public static final double AUTO_TURN_DISTANCE_SCALAR = 0.125;
   }
 
   public static final class IoConstants {
@@ -67,8 +62,6 @@ public final class Constants {
     /** Target shooter speed (RPM) for an ultra-speed shot (long range). */
     public static final double SHOOTER_TARGET_SPEED_ULTRA_RPM = 6000.0;
 
-    /** Proportional gain for shooter speed control (simple P loop). */
-    public static final double SHOOTER_KP = 0.003;
     /**
      * Fraction of target speed below which we apply max voltage to spin up quickly.
      * For example, 0.8 means full voltage until 80% of target speed is reached.
@@ -78,26 +71,45 @@ public final class Constants {
     /** Maximum voltage the shooter is ever commanded to (absolute value). */
     public static final double SHOOTER_MAX_VOLTAGE = 12.0;
 
+    // --- Shooter velocity PID + feedforward (see docs/IO_PID.md) ---
+    /** kP: output volts per (rot/s) error. */
+    public static final double SHOOTER_PID_KP = 0.12;
+    /** kI: integral term on velocity error. */
+    public static final double SHOOTER_PID_KI = 0.25;
     /**
-     * Nominal voltage used as a baseline during speed holding; P-control adjusts
-     * around this.
+     * kD: derivative on velocity (often small; encoder velocity can be noisy).
      */
-    public static final double SHOOTER_HOLD_BASE_VOLTAGE = 7.0;
+    public static final double SHOOTER_PID_KD = 0.0001;
+    /** Static friction feedforward (volts). */
+    public static final double SHOOTER_FF_KS = 0.0;
+    /** Velocity feedforward (V·s/rotation). */
+    public static final double SHOOTER_FF_KV = 0.30;
+    /** Acceleration feedforward (V·s²/rotation); 0 if unknown. */
+    public static final double SHOOTER_FF_KA = 0.0;
+    /** Absolute limit for PID integrator accumulator (WPILib units). */
+    public static final double SHOOTER_PID_INTEGRATOR_MAX = 2.0;
 
     // -----------------------------------------------------------------------
-    // Intake speed control (encoder-based, same pattern as shooter)
+    // Intake speed control (encoder-based PID + feedforward)
     // -----------------------------------------------------------------------
 
     /** Target intake speed (RPM) for intake/feed behavior. Negative = intake in. */
     public static final double INTAKE_TARGET_SPEED_RPM = -2500.0;
-    /** Proportional gain for intake speed control (simple P loop). */
-    public static final double INTAKE_KP = 0.0025;
-    /** Spin-up threshold fraction before switching to hold control. */
+    /** Spin-up threshold fraction before switching to closed-loop control. */
     public static final double INTAKE_SPINUP_THRESHOLD_FRACTION = 0.8;
     /** Absolute maximum intake voltage command. */
     public static final double INTAKE_MAX_VOLTAGE = 11.5;
-    /** Baseline intake hold voltage (signed toward intake direction). */
-    public static final double INTAKE_HOLD_BASE_VOLTAGE = -6.9;
+
+    public static final double INTAKE_PID_KP = 0.15;
+    public static final double INTAKE_PID_KI = 0.35;
+    public static final double INTAKE_PID_KD = 0.0001;
+    public static final double INTAKE_FF_KS = 0.0;
+    public static final double INTAKE_FF_KV = 0.17;
+    public static final double INTAKE_FF_KA = 0.0;
+    public static final double INTAKE_PID_INTEGRATOR_MAX = 2.0;
+
+    /** Extra SmartDashboard keys for shooter/intake RPM and error (tuning). */
+    public static final boolean IO_PID_TELEMETRY = true;
 
     // -----------------------------------------------------------------------
     // Intake / loader outputs (still open-loop on those motors)
@@ -178,37 +190,38 @@ public final class Constants {
   }
 
   /**
-   * Autonomous constants based on FRC 2026 REBUILT field.
-   * Field: 317.7 in × 651.2 in. Center line bisects the 651.2 in length.
-   * HUB is 158.6 in (~4.03 m) from each alliance wall → center to HUB ≈ 167 in
-   * (4.24 m).
-   * We drive from center toward our HUB and stop at estimated shooting range (~2
-   * m in front of HUB).
+   * Timing and open-loop speeds for {@link frc.robot.RobotContainer#autonomousCommand()}.
+   * Drive segments use {@link frc.robot.commands.AutoDrive} with timeouts only
+   * (not encoder distance). Tune times on the field.
    */
   public static final class AutoConstants {
-    /**
-     * Drive distance from center line to shooting position (meters). Tune for your
-     * shooter range.
-     */
-    public static final double CENTER_TO_SHOOT_DRIVE_METERS = 2.25;
-    /** Forward speed for center-to-shoot drive [0, 1]. */
-    public static final double CENTER_TO_SHOOT_SPEED = 0.6;
-    /** How long to run the launcher to shoot preload (seconds). */
-    public static final double CENTER_TO_SHOOT_LAUNCH_SECONDS = 3.0;
+    public static final double AUTO_INITIAL_SHOOT_SECONDS = 5.0;
+    public static final double AUTO_FWD1_SPEED = 0.75;
+    public static final double AUTO_FWD1_SECONDS = 0.5;
+    public static final double AUTO_TURN1_ROTATION = -0.66;
+    public static final double AUTO_TURN1_SECONDS = 0.5;
+    public static final double AUTO_FWD2_SPEED = 0.75;
+    public static final double AUTO_FWD2_SECONDS = 1.0;
+    public static final double AUTO_TURN2_ROTATION = 0.64;
+    public static final double AUTO_TURN2_SECONDS = 0.5;
+    public static final double AUTO_FWD_INTAKE_SPEED = 0.75;
+    public static final double AUTO_FWD_INTAKE_SECONDS = 0.87;
+    public static final double AUTO_TURN3_ROTATION = 0.5;
+    public static final double AUTO_TURN3_SECONDS = 0.5;
+    public static final double AUTO_FINAL_SHOOT_SECONDS = 5.0;
 
-    /** Basic auto: shoot duration (seconds). */
-    public static final double BASIC_SHOOT_SECONDS = 3.0;
     /**
-     * Basic auto: turn 30° starboard (right) — rotation rate [0, 1]. Positive =
-     * right.
+     * Short presets for the SmartDashboard {@code Auto choices} SendableChooser
+     * (time-based only; tune on the field).
      */
-    public static final double TURN_30_STARBOARD_SPEED = 0.35;
-    /** Basic auto: time (seconds) to turn ~30° starboard. Tune to match robot. */
-    public static final double TURN_30_STARBOARD_SECONDS = 1.2;
-    /** Basic auto: drive forward while intaking — duration (seconds). */
-    public static final double DRIVE_AND_INTAKE_SECONDS = 3.0;
-    /** Basic auto: forward speed [0, 1] during drive-and-intake. */
-    public static final double DRIVE_AND_INTAKE_SPEED = 0.5;
+    public static final double CHOOSER_SHOOT_ONLY_SECONDS = 4.0;
+    public static final double CHOOSER_SIMPLE_FWD_SPEED = 0.55;
+    public static final double CHOOSER_SIMPLE_FWD_SECONDS = 1.5;
+    public static final double CHOOSER_SIMPLE_REV_SPEED = -0.45;
+    public static final double CHOOSER_SIMPLE_REV_SECONDS = 1.5;
+    public static final double CHOOSER_SHOOT_THEN_FWD_SHOOT_SECONDS = 3.0;
+    public static final double CHOOSER_DRIVE_2S_SPEED = 0.5;
+    public static final double CHOOSER_DRIVE_2S_SECONDS = 2.0;
   }
 
   public static final class OperatorConstants {

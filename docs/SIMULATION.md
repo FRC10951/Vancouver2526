@@ -59,6 +59,14 @@ To view live data from the simulated robot:
 
 ---
 
+## Simulation config files in this repo
+
+**Policy:** Files such as `simgui-ds.json` at the **project root** are **committed on purpose** so the team shares the same Simulation GUI / Driver Station layout (joystick indices, window positions, etc.). If you prefer purely local layouts, you can stop tracking them and add their names to `.gitignore` (WPILib’s default `.gitignore` already ignores some `simgui`-related patterns; adjust to match what your team wants).
+
+- **`simgui-ds.json`** — Driver Station simulation settings generated when you run sim. Commit when you want everyone to inherit the same defaults; delete from git tracking if each student keeps their own.
+
+---
+
 ## Troubleshooting
 
 | Issue | What to do |

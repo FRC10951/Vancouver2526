@@ -1,5 +1,3 @@
-<!-- Zakhar are you going to do code urself or naw -->
-
 # KitBot 2026 Robot Code
 
 WPILib command-based robot code for the **2026 KitBot** (FRC). This robot has:
@@ -10,6 +8,25 @@ WPILib command-based robot code for the **2026 KitBot** (FRC). This robot has:
 - **Autonomous** options: Do Nothing, Drive Forward 2s, turn left 2s, and “drive back & shoot preload” (left or right).
 
 This README explains how **constants** map to hardware, the **subsystems and commands**, and the **controls**.
+
+**Repository map:** See [docs/REPO_LAYOUT.md](docs/REPO_LAYOUT.md) for folders, tools, and where simulation archives live.
+
+---
+
+## Documentation
+
+| Document | Contents |
+|----------|----------|
+| [docs/REPO_LAYOUT.md](docs/REPO_LAYOUT.md) | What each top-level folder is for. |
+| [docs/SIMULATION.md](docs/SIMULATION.md) | Desktop simulation, dashboards, and policy for `simgui-ds.json`. |
+| [docs/debugging.md](docs/debugging.md) | Historical debugging / controller notes (Cursor export). |
+
+---
+
+## Developer tools
+
+- **Constants editor (Swing):** From the project root run `.\gradlew :constants-editor:run` or double-click `tools\RunConstantsEditor.bat`. Saves under `src/main/java/frc/robot/Constants.java` and archives the previous file to **`constantsArchive/`** at the repo root (numbered `.txt` files; that folder is gitignored).
+- **Scripts:** Optional helpers in `scripts/` (e.g. `scripts\speak_reminder.ps1`).
 
 ---
 
@@ -132,9 +149,7 @@ Returns a formatted string of all CAN IDs (drivetrain + IO, intake, loader). Cal
 
 ## Build & deploy
 
-- **Build:** `./gradlew build` (or use the Gradle wrapper; ensure Java 17 and `JAVA_HOME` are set if needed).
+- **Build:** `.\gradlew build` (Gradle wrapper). Use the JDK bundled with WPILib or match the toolchain in `build.gradle`.
 - **Team number:** Set in WPILib VS Code or `.wpilib/wpilib_preferences.json`.
 - **Deploy:** Use WPILib deploy; driver Xbox on **USB port 0**.
 - Use the dashboard auto chooser to pick an autonomous before enabling.
-
-Hello world!

@@ -28,3 +28,6 @@ pluginManagement {
 
 Properties props = System.getProperties();
 props.setProperty("org.gradle.internal.native.headers.unresolved.dependencies.ignore", "true");
+
+include 'constants-editor'
+project(':constants-editor').projectDir = file('tools/constants-editor')

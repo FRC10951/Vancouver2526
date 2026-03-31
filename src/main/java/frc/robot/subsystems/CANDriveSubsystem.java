@@ -32,7 +32,7 @@ public class CANDriveSubsystem extends SubsystemBase {
 
   private final DifferentialDrive drive;
 
-  // --- Encoders ---
+  /** Spark encoder objects; meaningful odometry only if {@link frc.robot.Constants.DriveConstants#DRIVE_QUADRATURE_ENCODERS_WIRED}. */
   private final RelativeEncoder leftEncoder;
   private final RelativeEncoder rightEncoder;
 
@@ -78,7 +78,7 @@ public class CANDriveSubsystem extends SubsystemBase {
     rightFollowerConfig.follow(rightLeader);
     rightFollower.configure(rightFollowerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
-    // Built-in encoders
+    // Encoder API: brushed CIM needs quadrature wired to the data port for real counts.
     leftEncoder = leftLeader.getEncoder();
     rightEncoder = rightLeader.getEncoder();
 
@@ -93,11 +93,16 @@ public class CANDriveSubsystem extends SubsystemBase {
 
   @Override
   public void periodic() {
-    // Publish useful diagnostics to SmartDashboard
-    SmartDashboard.putNumber("Left Distance (m)", getLeftDistanceMeters());
-    SmartDashboard.putNumber("Right Distance (m)", getRightDistanceMeters());
-    SmartDashboard.putNumber("Left Velocity (m/s)", getLeftVelocityMetersPerSecond());
-    SmartDashboard.putNumber("Right Velocity (m/s)", getRightVelocityMetersPerSecond());
+    if (DRIVE_QUADRATURE_ENCODERS_WIRED) {
+      SmartDashboard.putNumber("Left Distance (m)", getLeftDistanceMeters());
+      SmartDashboard.putNumber("Right Distance (m)", getRightDistanceMeters());
+      SmartDashboard.putNumber("Left Velocity (m/s)", getLeftVelocityMetersPerSecond());
+      SmartDashboard.putNumber("Right Velocity (m/s)", getRightVelocityMetersPerSecond());
+    } else {
+      SmartDashboard.putString(
+          "Drive odometry",
+          "Off (set DRIVE_QUADRATURE_ENCODERS_WIRED when encoders are wired)");
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -127,7 +132,7 @@ public class CANDriveSubsystem extends SubsystemBase {
 
   /**
    * Sets raw voltage on each side of the drivetrain.
-   * Useful for autonomous routines that need precise distance control.
+   * Useful for autonomous routines that command voltage directly (e.g. characterization).
    *
    * @param leftVolts  Voltage for the left side [-12, 12]
    * @param rightVolts Voltage for the right side [-12, 12]
@@ -185,8 +190,11 @@ public class CANDriveSubsystem extends SubsystemBase {
     return (rightEncoder.getVelocity() / 60.0) * METERS_PER_ROTATION;
   }
 
-  /** Resets both drive encoders to zero. */
+  /** Resets both drive encoders to zero (no-op if drive encoders are not wired). */
   public void resetEncoders() {
+    if (!DRIVE_QUADRATURE_ENCODERS_WIRED) {
+      return;
+    }
     leftEncoder.setPosition(0);
     rightEncoder.setPosition(0);
   }

@@ -8,8 +8,10 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.ParallelDeadlineGroup;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import static frc.robot.Constants.OperatorConstants.*;
+import static frc.robot.Constants.AutoConstants.*;
 import static frc.robot.Constants.DriveConstants.*;
+import static frc.robot.Constants.OperatorConstants.DRIVER_CONTROLLER_PORT;
+import static frc.robot.Constants.OperatorConstants.TRIGGER_THRESHOLD;
 
 import frc.robot.commands.AutoDrive;
 import frc.robot.commands.Drive;
@@ -30,16 +32,42 @@ public class RobotContainer {
   private final CANDriveSubsystem driveSubsystem = new CANDriveSubsystem();
   private final IoSubsystem ioSubsystem = new IoSubsystem();
   private final CommandXboxController driverController = new CommandXboxController(DRIVER_CONTROLLER_PORT);
-  private final CommandXboxController operatorController = new CommandXboxController(OPERATOR_CONTROLLER_PORT);
   private final SendableChooser<Command> autoChooser = new SendableChooser<>();
 
   public RobotContainer() {
     configureBindings();
 
-    autoChooser.setDefaultOption("Timed auto", autonomousCommand());
+    autoChooser.setDefaultOption("Timed auto (full)", autonomousCommand());
     autoChooser.addOption("Do Nothing", Commands.none());
-    autoChooser.addOption("Drive Forward 2s", new AutoDrive(driveSubsystem, 0.5, 0.0).withTimeout(2.0));
+    autoChooser.addOption("Shoot only", chooserShootOnly());
+    autoChooser.addOption("Drive forward 1.5s", chooserDriveForwardShort());
+    autoChooser.addOption("Shoot then forward 1.5s", chooserShootThenForwardShort());
+    autoChooser.addOption("Drive backward 1.5s", chooserDriveBackwardShort());
+    autoChooser.addOption(
+        "Drive forward 2s",
+        new AutoDrive(driveSubsystem, CHOOSER_DRIVE_2S_SPEED, 0.0).withTimeout(CHOOSER_DRIVE_2S_SECONDS));
     SmartDashboard.putData("Auto choices", autoChooser);
+  }
+
+  private Command chooserShootOnly() {
+    return ioSubsystem.commandLaunch().withTimeout(CHOOSER_SHOOT_ONLY_SECONDS);
+  }
+
+  private Command chooserDriveForwardShort() {
+    return new AutoDrive(driveSubsystem, CHOOSER_SIMPLE_FWD_SPEED, 0.0)
+        .withTimeout(CHOOSER_SIMPLE_FWD_SECONDS);
+  }
+
+  private Command chooserShootThenForwardShort() {
+    return Commands.sequence(
+        ioSubsystem.commandLaunch().withTimeout(CHOOSER_SHOOT_THEN_FWD_SHOOT_SECONDS),
+        new AutoDrive(driveSubsystem, CHOOSER_SIMPLE_FWD_SPEED, 0.0)
+            .withTimeout(CHOOSER_SIMPLE_FWD_SECONDS));
+  }
+
+  private Command chooserDriveBackwardShort() {
+    return new AutoDrive(driveSubsystem, CHOOSER_SIMPLE_REV_SPEED, 0.0)
+        .withTimeout(CHOOSER_SIMPLE_REV_SECONDS);
   }
 
   private Command autonomousRedStation1() {
@@ -74,10 +102,6 @@ public class RobotContainer {
     return ioSubsystem;
   }
 
-  public CommandXboxController getOperatorController() {
-    return operatorController;
-  }
-
   /**
    * Wrapper used for teleop shooting: launch + drivetrain wiggle.
    * Intake/feed remains continuous from the launch command (no pulsing).
@@ -107,8 +131,9 @@ public class RobotContainer {
     driverController.a().whileTrue(createShootingSequence(ioSubsystem.commandHighSpeedLaunch()));
     driverController.b().whileTrue(createShootingSequence(ioSubsystem.commandUltraSpeedLaunch()));
     driverController.rightBumper().whileTrue(createShootingSequence(ioSubsystem.commandUltraSpeedLaunch()));
-    // Keep encoder reset available on start.
-    driverController.start().onTrue(driveSubsystem.runOnce(driveSubsystem::resetEncoders));
+    if (DRIVE_QUADRATURE_ENCODERS_WIRED) {
+      driverController.start().onTrue(driveSubsystem.runOnce(driveSubsystem::resetEncoders));
+    }
   }
 
   /**
@@ -123,32 +148,23 @@ public class RobotContainer {
   // ------------------------------------------------------------
   public Command autonomousCommand() {
     return Commands.sequence(
-        // Shoot initial 8 fuel;
-        ioSubsystem.commandLaunch().withTimeout(5.0),
+        ioSubsystem.commandLaunch().withTimeout(AUTO_INITIAL_SHOOT_SECONDS),
 
-        // Drive forward 0.5 meters;
-        new AutoDrive(driveSubsystem, 0.75, 0.0).withTimeout(0.5),
+        new AutoDrive(driveSubsystem, AUTO_FWD1_SPEED, 0.0).withTimeout(AUTO_FWD1_SECONDS),
 
-        // Rotate 90 degrees to the right;
-        new AutoDrive(driveSubsystem, 0.0, -0.66).withTimeout(0.5),
+        new AutoDrive(driveSubsystem, 0.0, AUTO_TURN1_ROTATION).withTimeout(AUTO_TURN1_SECONDS),
 
-        // Drive forward 0.5 meters;
-        new AutoDrive(driveSubsystem, 0.75, 0.0).withTimeout(1.0),
+        new AutoDrive(driveSubsystem, AUTO_FWD2_SPEED, 0.0).withTimeout(AUTO_FWD2_SECONDS),
 
-        // Rotate 90 degrees to the right;
-        new AutoDrive(driveSubsystem, 0.0, 0.64).withTimeout(0.5),
+        new AutoDrive(driveSubsystem, 0.0, AUTO_TURN2_ROTATION).withTimeout(AUTO_TURN2_SECONDS),
 
-        // Intake while driving forward 2.8 meters (no intake timeout; drive is the
-        // deadline).
         new ParallelDeadlineGroup(
-            new AutoDrive(driveSubsystem, 0.75, 0.0).withTimeout(0.87),
+            new AutoDrive(driveSubsystem, AUTO_FWD_INTAKE_SPEED, 0.0).withTimeout(AUTO_FWD_INTAKE_SECONDS),
             ioSubsystem.commandIntake()),
 
-        // Rotate 30 degrees to the right;
-        new AutoDrive(driveSubsystem, 0.0, 0.5).withTimeout(0.5),
+        new AutoDrive(driveSubsystem, 0.0, AUTO_TURN3_ROTATION).withTimeout(AUTO_TURN3_SECONDS),
 
-        // Shoot for 5 seconds;
-        ioSubsystem.commandLaunch().withTimeout(5.0));
+        ioSubsystem.commandLaunch().withTimeout(AUTO_FINAL_SHOOT_SECONDS));
   }
 
   // ------------------------------------------------------------

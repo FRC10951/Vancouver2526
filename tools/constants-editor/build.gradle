@@ -1,0 +1,23 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+application {
+    mainClass = 'constantseditor.ConstantsEditorApp'
+}
+
+tasks.named('run', JavaExec) {
+    workingDir = rootProject.projectDir
+}
+
+tasks.named('jar') {
+    manifest {
+        attributes 'Main-Class': 'constantseditor.ConstantsEditorApp'
+    }
+}

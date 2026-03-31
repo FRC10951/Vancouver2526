@@ -188,3 +188,9 @@ compile_commands.json
 
 # Third-party tools (e.g. ripgrep) not part of robot code
 ripgrep-*/
+
+# Constants editor: numbered backups (local history; do not commit)
+/constantsArchive/
+
+# Subproject build output (root /build/ is ignored separately by WPILib template)
+tools/**/build/
