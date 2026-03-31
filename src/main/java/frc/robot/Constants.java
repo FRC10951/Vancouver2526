@@ -1,7 +1,3 @@
-// Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
-
 package frc.robot;
 
 /**
@@ -30,7 +26,7 @@ public final class Constants {
     public static final double DRIVE_TRACK_WIDTH_METERS = 0.55;
 
     /** How fast the intake wiggles back and forth to unjam balls. */
-    public static final double INTAKE_WIGGLE_SPEED = 0.45;
+    public static final double INTAKE_WIGGLE_SPEED = 0.46;
 
     /**
      * Scalar applied to encoder-only turn distance calculations.
@@ -61,7 +57,7 @@ public final class Constants {
     /** Target shooter speed (RPM) for the main shooting/intake command. */
     public static final double SHOOTER_TARGET_SPEED_INTAKE_RPM = 1500.0;
     /** Target shooter speed (RPM) for the 50% spin-up toggle. */
-    public static final double SHOOTER_TARGET_SPEED_SPINUP50_RPM = 500.0;
+    public static final double SHOOTER_TARGET_SPEED_SPINUP50_RPM = 1000.0;
     /** Target shooter speed (RPM) when using the right-trigger toggle. */
     public static final double SHOOTER_TARGET_SPEED_TOGGLE_RPM = SHOOTER_TARGET_SPEED_INTAKE_RPM;
     /** Target shooter speed (RPM) for the main launch shot. */

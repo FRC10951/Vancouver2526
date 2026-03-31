@@ -1,7 +1,3 @@
-// Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
-
 package frc.robot;
 
 import edu.wpi.first.wpilibj.DriverStation;
@@ -47,15 +43,15 @@ public class RobotContainer {
   }
 
   private Command autonomousRedStation1() {
-    return Commands.none();
+    return autonomousCommand();
   }
 
   private Command autonomousRedStation2() {
-    return Commands.none();
+    return autonomousCommand();
   }
 
   private Command autonomousRedStation3() {
-    return Commands.none();
+    return autonomousCommand();
   }
 
   private Command autonomousBlueStation1() {
@@ -63,11 +59,11 @@ public class RobotContainer {
   }
 
   private Command autonomousBlueStation2() {
-    return Commands.none();
+    return autonomousCommand();
   }
 
   private Command autonomousBlueStation3() {
-    return Commands.none();
+    return autonomousCommand();
   }
 
   public CANDriveSubsystem getDriveSubsystem() {
