@@ -7,25 +7,14 @@ package frc.robot.subsystems;
 import com.revrobotics.PersistMode;
 import com.revrobotics.ResetMode;
 import com.revrobotics.RelativeEncoder;
-import com.revrobotics.sim.SparkRelativeEncoderSim;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.kinematics.DifferentialDriveOdometry;
-import edu.wpi.first.wpilibj.AnalogGyro;
-import edu.wpi.first.wpilibj.RobotBase;
-import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
-import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.wpilibj.simulation.AnalogGyroSim;
-import edu.wpi.first.wpilibj.simulation.DifferentialDrivetrainSim;
-import edu.wpi.first.wpilibj.simulation.DifferentialDrivetrainSim.KitbotGearing;
-import edu.wpi.first.wpilibj.simulation.DifferentialDrivetrainSim.KitbotMotor;
-import edu.wpi.first.wpilibj.simulation.DifferentialDrivetrainSim.KitbotWheelSize;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import static frc.robot.Constants.DriveConstants.*;
 
@@ -51,19 +40,10 @@ public class CANDriveSubsystem extends SubsystemBase {
   private final RelativeEncoder leftEncoder;
   private final RelativeEncoder rightEncoder;
 
+  // private final EncoderSim leftEncoderSim;
+  // private final EncoderSim rightEncoderSim;
+
   private static final double METERS_PER_ROTATION = (Math.PI * WHEEL_DIAMETER_METERS) / GEAR_RATIO;
-
-  // --- Simulation (only used when RobotBase.isSimulation()) ---
-  private DifferentialDrivetrainSim m_driveSim;
-  private SparkRelativeEncoderSim m_leftEncoderSim;
-  private SparkRelativeEncoderSim m_rightEncoderSim;
-
-  // TODO: none of this prob exists
-  private AnalogGyro m_gyro = new AnalogGyro(1);
-  private AnalogGyroSim m_gyroSim = new AnalogGyroSim(m_gyro);
-  private DifferentialDriveOdometry m_odometry;
-
-  private Field2d m_field = new Field2d();
 
   public CANDriveSubsystem() {
     // Create brushed motors for a KitBot-style CIM drivetrain
@@ -106,25 +86,9 @@ public class CANDriveSubsystem extends SubsystemBase {
     leftEncoder = leftLeader.getEncoder();
     rightEncoder = rightLeader.getEncoder();
 
-    // Simulation: KitBot-style drivetrain (dual CIM per side, 10.71:1, 6" wheels)
-    if (RobotBase.isSimulation()) {
-      m_driveSim = DifferentialDrivetrainSim.createKitbotSim(
-          KitbotMotor.kDoubleNEOPerSide, // NEOs are brushless
-          KitbotGearing.k10p71,
-          KitbotWheelSize.kSixInch,
-          null);
-      m_leftEncoderSim = new SparkRelativeEncoderSim(leftLeader);
-      m_rightEncoderSim = new SparkRelativeEncoderSim(rightLeader);
-    }
-
-    m_odometry = new DifferentialDriveOdometry(
-        m_gyro.getRotation2d(),
-        // todo: is this the right method?
-        getLeftDistanceMeters(),
-        getRightDistanceMeters(),
-        new Pose2d(5.0, 13.5, new Rotation2d()));
-
-    SmartDashboard.putData("Field", m_field);
+    // setup simulation
+    // leftEncoderSim = new EncoderSim(leftEncoder);
+    // rightEncoderSim = new EncoderSim(rightEncoder);
   }
 
   // ---------------------------------------------------------------------------
@@ -138,34 +102,6 @@ public class CANDriveSubsystem extends SubsystemBase {
     SmartDashboard.putNumber("Right Distance (m)", getRightDistanceMeters());
     SmartDashboard.putNumber("Left Velocity (m/s)", getLeftVelocityMetersPerSecond());
     SmartDashboard.putNumber("Right Velocity (m/s)", getRightVelocityMetersPerSecond());
-
-    m_odometry.update(m_gyro.getRotation2d(),
-        getLeftDistanceMeters(),
-        getRightDistanceMeters());
-
-    m_field.setRobotPose(m_odometry.getPoseMeters());
-
-  }
-
-  @Override
-  public void simulationPeriodic() {
-    if (m_driveSim == null) {
-      return;
-    }
-    double leftVolts = leftLeader.getAppliedOutput() * RobotController.getBatteryVoltage();
-    double rightVolts = rightLeader.getAppliedOutput() * RobotController.getBatteryVoltage();
-    double leftPosM = m_driveSim.getLeftPositionMeters();
-    double rightPosM = m_driveSim.getRightPositionMeters();
-    double leftVelMS = m_driveSim.getLeftVelocityMetersPerSecond();
-    double rightVelMS = m_driveSim.getRightVelocityMetersPerSecond();
-    m_leftEncoderSim.setPosition(leftPosM / METERS_PER_ROTATION);
-    m_leftEncoderSim.setVelocity(leftVelMS / METERS_PER_ROTATION * 60.0);
-    m_rightEncoderSim.setPosition(rightPosM / METERS_PER_ROTATION);
-    m_rightEncoderSim.setVelocity(rightVelMS / METERS_PER_ROTATION * 60.0);
-    m_driveSim.setInputs(leftVolts, rightVolts);
-    m_gyroSim.setAngle(m_driveSim.getHeading().getDegrees());
-    m_driveSim.update(0.02);
-
   }
 
   // ---------------------------------------------------------------------------
@@ -185,25 +121,12 @@ public class CANDriveSubsystem extends SubsystemBase {
 
   /**
    * Arcade drive: one stick for forward/backward, one for rotation.
-   * Uses DifferentialDrive.arcadeDrive; positive xSpeed = forward, positive zRotation = counterclockwise.
    *
    * @param xSpeed    Forward/backward speed [-1, 1]
    * @param zRotation Rotation rate [-1, 1]
    */
   public void driveArcade(double xSpeed, double zRotation) {
     drive.arcadeDrive(xSpeed, zRotation);
-  }
-
-  /**
-   * Arcade drive with optional input squaring. Use squareInputs=false in autonomous
-   * for linear response to commanded speeds.
-   *
-   * @param xSpeed       Forward/backward speed [-1, 1]
-   * @param zRotation    Rotation rate [-1, 1]; counterclockwise positive (NWU)
-   * @param squareInputs If true, decreases sensitivity at low speeds (default for teleop)
-   */
-  public void driveArcade(double xSpeed, double zRotation, boolean squareInputs) {
-    drive.arcadeDrive(xSpeed, zRotation, squareInputs);
   }
 
   /**
@@ -230,9 +153,10 @@ public class CANDriveSubsystem extends SubsystemBase {
 
   /**
    * Returns the distance traveled by the left side in meters.
+   * Negated so that forward motion (left motor inverted) gives positive distance.
    */
   public double getLeftDistanceMeters() {
-    return leftEncoder.getPosition() * METERS_PER_ROTATION;
+    return -leftEncoder.getPosition() * METERS_PER_ROTATION;
   }
 
   /**
@@ -252,13 +176,14 @@ public class CANDriveSubsystem extends SubsystemBase {
 
   /**
    * Returns left-side velocity in meters per second.
+   * Negated so that forward motion gives positive velocity.
    */
   public double getLeftVelocityMetersPerSecond() {
-    return (leftEncoder.getVelocity() / 60.0) * METERS_PER_ROTATION;
+    return -(leftEncoder.getVelocity() / 60.0) * METERS_PER_ROTATION;
   }
 
   /**
-   * Returns right-side velocity in meters per second.
+   * Returns right-side kvelocity in meters per second.
    */
   public double getRightVelocityMetersPerSecond() {
     return (rightEncoder.getVelocity() / 60.0) * METERS_PER_ROTATION;
@@ -268,5 +193,20 @@ public class CANDriveSubsystem extends SubsystemBase {
   public void resetEncoders() {
     leftEncoder.setPosition(0);
     rightEncoder.setPosition(0);
+  }
+
+  /**
+   * Small fast back-and-forth wiggle motion, used while the intake/shooter
+   * command is active. Runs until interrupted.
+   *
+   * @param wiggleSpeed       forward/backward speed [-1, 1], small magnitude
+   * @param halfPeriodSeconds time for each half of the wiggle cycle
+   */
+  public Command commandIntakeWiggle(double wiggleSpeed, double halfPeriodSeconds) {
+    Command forward = this.run(() -> driveArcade(wiggleSpeed, 0)).withTimeout(halfPeriodSeconds);
+    Command backward = this.run(() -> driveArcade(-wiggleSpeed, 0)).withTimeout(halfPeriodSeconds);
+    return Commands.sequence(forward, backward)
+        .repeatedly()
+        .finallyDo(interrupted -> stop());
   }
 }

@@ -1,36 +1,35 @@
+// Copyright (c) FIRST and other WPILib contributors.
+// Open Source Software; you can modify and/or share it under the terms of
+// the WPILib BSD license file in the root directory of this project.
+
 package frc.robot.commands;
 
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.subsystems.CANDriveSubsystem;
-import static frc.robot.Constants.DriveConstants.TRACK_WIDTH_METERS;
+import static frc.robot.Constants.DriveConstants.DRIVE_TRACK_WIDTH_METERS;
+import static frc.robot.Constants.DriveConstants.AUTO_TURN_DISTANCE_SCALAR;
 
 /**
- * Point-turns the robot by a specified angle using encoder-based differential
- * measurement. Angle is computed as (leftDistance − rightDistance) / trackWidth.
+ * Turns the robot in place using drivetrain encoders.
  *
- * <p>Uses {@link edu.wpi.first.wpilibj.drive.DifferentialDrive#arcadeDrive} with
- * zRotation per WPILib convention: counterclockwise positive. So positive
- * angleDegrees = clockwise (right) = negative zRotation.
- *
- * <p>Accuracy depends on the {@code TRACK_WIDTH_METERS} constant matching
- * the real robot. Always pair with {@code .withTimeout()} as a safety net.
+ * <p>This is an encoder-only turn (no gyro). It assumes an in-place turn where
+ * the left and right sides travel equal and opposite distances.
  */
 public class AutoTurn extends Command {
-
   private final CANDriveSubsystem driveSubsystem;
-  private final double targetAngleRad;
-  private final double speed;
+  private final double targetAngleDegrees;
+  private final double turnSpeed;
 
   /**
-   * @param driveSubsystem The drive subsystem
-   * @param angleDegrees   Angle to turn (positive = clockwise/right, negative = CCW/left)
-   * @param speed          Absolute rotation duty-cycle [0, 1]
+   * @param driveSubsystem The drive subsystem (encoders will be used).
+   * @param targetAngleDegrees Positive = turn right, negative = turn left.
+   * @param turnSpeed Tank turn speed magnitude in [0, 1].
    */
-  public AutoTurn(CANDriveSubsystem driveSubsystem, double angleDegrees, double speed) {
+  public AutoTurn(CANDriveSubsystem driveSubsystem, double targetAngleDegrees, double turnSpeed) {
     addRequirements(driveSubsystem);
     this.driveSubsystem = driveSubsystem;
-    this.targetAngleRad = Math.toRadians(angleDegrees);
-    this.speed = speed;
+    this.targetAngleDegrees = targetAngleDegrees;
+    this.turnSpeed = Math.abs(turnSpeed);
   }
 
   @Override
@@ -40,8 +39,10 @@ public class AutoTurn extends Command {
 
   @Override
   public void execute() {
-    // DifferentialDrive: zRotation positive = counterclockwise. Clockwise (right) = negative.
-    driveSubsystem.driveArcade(0, -Math.signum(targetAngleRad) * speed, false); // linear for auton
+    double sign = Math.signum(targetAngleDegrees);
+    double left = turnSpeed * sign;
+    double right = -turnSpeed * sign;
+    driveSubsystem.driveTank(left, right);
   }
 
   @Override
@@ -51,9 +52,15 @@ public class AutoTurn extends Command {
 
   @Override
   public boolean isFinished() {
-    double leftDist = driveSubsystem.getLeftDistanceMeters();
-    double rightDist = driveSubsystem.getRightDistanceMeters();
-    double currentAngleRad = (leftDist - rightDist) / TRACK_WIDTH_METERS;
-    return Math.abs(currentAngleRad) >= Math.abs(targetAngleRad);
+    double rotationRadians = Math.toRadians(Math.abs(targetAngleDegrees));
+    double requiredSideDistanceMeters =
+        ((rotationRadians * DRIVE_TRACK_WIDTH_METERS) / 2.0) * AUTO_TURN_DISTANCE_SCALAR;
+
+    double left = Math.abs(driveSubsystem.getLeftDistanceMeters());
+    double right = Math.abs(driveSubsystem.getRightDistanceMeters());
+    double avgSideDistance = (left + right) / 2.0;
+
+    return avgSideDistance >= requiredSideDistanceMeters;
   }
 }
+
