@@ -63,13 +63,13 @@ public final class Constants {
     /** Target shooter speed (RPM) for the main shooting/intake command. */
     public static final double INTAKE_TARGET_SPEED_INTAKE_RPM = 2000.0;
     /** Target shooter speed (RPM) for the 50% spin-up toggle. */
-    public static final double SHOOTER_TARGET_SPEED_SPINUP50_RPM = 15[p00.0;
+    public static final double SHOOTER_TARGET_SPEED_SPINUP50_RPM = 1500.0;
     /** Target shooter speed (RPM) when using the right-trigger toggle. */
     public static final double SHOOTER_TARGET_SPEED_TOGGLE_RPM = INTAKE_TARGET_SPEED_INTAKE_RPM;
     /** Target shooter speed (RPM) for the main launch shot. */
-    public static final double SHOOTER_TARGET_SPEED_LAUNCH_RPM = 2100.0;
+    public static final double SHOOTER_TARGET_SPEED_LAUNCH_RPM = 3200.0;
     /** Target shooter speed (RPM) for a high-speed shot (A button). */
-    public static final double SHOOTER_TARGET_SPEED_HIGH_RPM = 4500.0;
+    public static final double SHOOTER_TARGET_SPEED_HIGH_RPM = 5500.0;
     /** Target shooter speed (RPM) for an ultra-speed shot (long range). */
     public static final double SHOOTER_TARGET_SPEED_ULTRA_RPM = 6000.0;
 
