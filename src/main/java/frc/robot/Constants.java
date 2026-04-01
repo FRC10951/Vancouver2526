@@ -4,6 +4,8 @@
 
 package frc.robot;
 
+import static frc.robot.Constants.DriveConstants.GEAR_RATIO;
+
 /**
  * Robot-wide constants: CAN IDs, current limits, voltages, and operator
  * scaling.
@@ -20,7 +22,7 @@ public final class Constants {
     /** Wheel diameter in meters (e.g. 6 in ≈ 0.1524 m). */
     public static final double WHEEL_DIAMETER_METERS = 0.1524;
     /** Gear ratio motor-to-wheel (e.g. 10.71 for KitBot). */
-    public static final double GEAR_RATIO = 10.71;
+    public static final double GEAR_RATIO = 2.25;
 
     /**
      * Approximate track width (meters) used for encoder-only in-place turns.
@@ -59,15 +61,15 @@ public final class Constants {
     // -----------------------------------------------------------------------
 
     /** Target shooter speed (RPM) for the main shooting/intake command. */
-    public static final double SHOOTER_TARGET_SPEED_INTAKE_RPM = 1500.0;
+    public static final double INTAKE_TARGET_SPEED_INTAKE_RPM = 2000.0;
     /** Target shooter speed (RPM) for the 50% spin-up toggle. */
-    public static final double SHOOTER_TARGET_SPEED_SPINUP50_RPM = 500.0;
+    public static final double SHOOTER_TARGET_SPEED_SPINUP50_RPM = 15[p00.0;
     /** Target shooter speed (RPM) when using the right-trigger toggle. */
-    public static final double SHOOTER_TARGET_SPEED_TOGGLE_RPM = SHOOTER_TARGET_SPEED_INTAKE_RPM;
+    public static final double SHOOTER_TARGET_SPEED_TOGGLE_RPM = INTAKE_TARGET_SPEED_INTAKE_RPM;
     /** Target shooter speed (RPM) for the main launch shot. */
-    public static final double SHOOTER_TARGET_SPEED_LAUNCH_RPM = 1300.0;
+    public static final double SHOOTER_TARGET_SPEED_LAUNCH_RPM = 2100.0;
     /** Target shooter speed (RPM) for a high-speed shot (A button). */
-    public static final double SHOOTER_TARGET_SPEED_HIGH_RPM = 1900.0;
+    public static final double SHOOTER_TARGET_SPEED_HIGH_RPM = 4500.0;
     /** Target shooter speed (RPM) for an ultra-speed shot (long range). */
     public static final double SHOOTER_TARGET_SPEED_ULTRA_RPM = 6000.0;
 
@@ -77,7 +79,7 @@ public final class Constants {
      * Fraction of target speed below which we apply max voltage to spin up quickly.
      * For example, 0.8 means full voltage until 80% of target speed is reached.
      */
-    public static final double SHOOTER_SPINUP_THRESHOLD_FRACTION = 0.8;
+    public static final double SHOOTER_SPINUP_THRESHOLD_FRACTION = 0.9;
 
     /** Maximum voltage the shooter is ever commanded to (absolute value). */
     public static final double SHOOTER_MAX_VOLTAGE = 12.0;

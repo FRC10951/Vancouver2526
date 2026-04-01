@@ -46,29 +46,12 @@ public class RobotContainer {
     SmartDashboard.putData("Auto choices", autoChooser);
   }
 
-  private Command autonomousRedStation1() {
-    return Commands.none();
-  }
-
-  private Command autonomousRedStation2() {
-    return Commands.none();
-  }
-
-  private Command autonomousRedStation3() {
-    return Commands.none();
-  }
-
-  private Command autonomousBlueStation1() {
-    return autonomousCommand();
-  }
-
-  private Command autonomousBlueStation2() {
-    return Commands.none();
-  }
-
-  private Command autonomousBlueStation3() {
-    return Commands.none();
-  }
+  private Command autonomousRedStation1() { return autonomousCommand(); }
+  private Command autonomousRedStation2() { return autonomousCommand(); }
+  private Command autonomousRedStation3() { return autonomousCommand(); }
+  private Command autonomousBlueStation1() { return autonomousCommand(); }
+  private Command autonomousBlueStation2() { return autonomousCommand(); }
+  private Command autonomousBlueStation3() { return autonomousCommand(); }
 
   public CANDriveSubsystem getDriveSubsystem() {
     return driveSubsystem;
@@ -127,32 +110,11 @@ public class RobotContainer {
   // ------------------------------------------------------------
   public Command autonomousCommand() {
     return Commands.sequence(
-        // Shoot initial 8 fuel;
+        // Shoot preload.
         ioSubsystem.commandLaunch().withTimeout(5.0),
 
-        // Drive forward 0.5 meters;
-        new AutoDrive(driveSubsystem, 0.75, 0.0).withTimeout(0.5),
-
-        // Rotate 90 degrees to the right;
-        new AutoDrive(driveSubsystem, 0.0, -0.66).withTimeout(0.5),
-
-        // Drive forward 0.5 meters;
-        new AutoDrive(driveSubsystem, 0.75, 0.0).withTimeout(1.0),
-
-        // Rotate 90 degrees to the right;
-        new AutoDrive(driveSubsystem, 0.0, 0.64).withTimeout(0.5),
-
-        // Intake while driving forward 2.8 meters (no intake timeout; drive is the
-        // deadline).
-        new ParallelDeadlineGroup(
-            new AutoDrive(driveSubsystem, 0.75, 0.0).withTimeout(0.87),
-            ioSubsystem.commandIntake()),
-
-        // Rotate 30 degrees to the right;
-        new AutoDrive(driveSubsystem, 0.0, 0.5).withTimeout(0.5),
-
-        // Shoot for 5 seconds;
-        ioSubsystem.commandLaunch().withTimeout(5.0));
+        // Drive forward a short distance, then stop.
+        new AutoDrive(driveSubsystem, 0.75, 0.0).withTimeout(0.5));
   }
 
   // ------------------------------------------------------------

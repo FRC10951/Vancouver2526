@@ -7,7 +7,6 @@ import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
-import edu.wpi.first.math.controller.BangBangController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -17,7 +16,7 @@ import static frc.robot.Constants.IoConstants.*;
 import frc.robot.Constants.IoConstants.IoCanIdGroup;
 
 /**
-   * Fuel system: Flywheel motor, intake, and loader (CAN IDs from
+ * Fuel system: Flywheel motor, intake, and loader (CAN IDs from
  * Constants.IoConstants), all
  * brushless SPARK MAX.
  */
@@ -39,7 +38,6 @@ public class IoSubsystem extends SubsystemBase {
   private boolean intakeEnabled = false;
   private double intakeTargetSpeedRpm = 0.0;
   private final SparkMax loaderMotor;
-  private final BangBangController shooterBangBang;
 
   public IoSubsystem() {
     this(IO_CAN_IDS);
@@ -64,8 +62,6 @@ public class IoSubsystem extends SubsystemBase {
     SparkMaxConfig loaderConfig = new SparkMaxConfig();
     loaderConfig.smartCurrentLimit(LOADER_MOTOR_CURRENT_LIMIT);
     loaderMotor.configure(loaderConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    shooterBangBang = new BangBangController();
-    shooterBangBang.setTolerance(30); // TODO
 
   }
 
@@ -135,6 +131,7 @@ public class IoSubsystem extends SubsystemBase {
   public void toggleSpinUp50Requested() {
     spinUp50Requested = !spinUp50Requested;
   }
+
   /** Default command: when no other command runs, apply idle spin logic. */
   public Command commandIdle() {
     return run(this::applyIdleState);
@@ -143,7 +140,18 @@ public class IoSubsystem extends SubsystemBase {
   private void applyIdleState() {
     // Only the X-button idle mode should keep the shooter spun up persistently.
     if (spinUp50Requested) {
-      enableShooterAtSpeed(SHOOTER_TARGET_SPEED_SPINUP50_RPM);
+      // Let the shooter coast while it is above the desired idle speed, and only
+      // re-engage closed-loop control if it falls below the target RPM. This keeps
+      // X as a "minimum speed" clamp instead of instantly forcing a new setpoint.
+      double current = getShooterSpeedRpm();
+      double desiredRpm = SHOOTER_TARGET_SPEED_SPINUP50_RPM;
+      if (current > desiredRpm) {
+        // Above idle target: coast freely (no control).
+        disableShooter();
+      } else {
+        // Below idle target: hold at the desired RPM.
+        enableShooterAtSpeed(desiredRpm);
+      }
     } else {
       disableShooter();
     }
@@ -159,7 +167,6 @@ public class IoSubsystem extends SubsystemBase {
    */
   private void updateShooterControl() {
     if (!shooterEnabled || shooterTargetSpeedRpm <= 0.0) {
-      flywheelMotor.setVoltage(0.0);
       return;
     }
 
@@ -193,7 +200,6 @@ public class IoSubsystem extends SubsystemBase {
    */
   private void updateIntakeControl() {
     if (!intakeEnabled || intakeTargetSpeedRpm == 0.0) {
-      intakeMotor.setVoltage(0.0);
       return;
     }
 
@@ -214,6 +220,13 @@ public class IoSubsystem extends SubsystemBase {
       commanded = -INTAKE_MAX_VOLTAGE;
     }
 
+    // Ensure we never drive the intake in the opposite direction of the target.
+    // If the controller would overshoot and flip sign, clamp to zero instead
+    // to avoid visible reverse "kicks" and pulsing.
+    if (Math.signum(commanded) != 0.0 && Math.signum(commanded) != Math.signum(target)) {
+      commanded = 0.0;
+    }
+
     intakeMotor.setVoltage(commanded);
   }
 
@@ -224,7 +237,7 @@ public class IoSubsystem extends SubsystemBase {
           // shooter at the intake target speed; flywheel voltage itself is now controlled
           // by the encoder loop.
           if (flywheelVoltage != 0.0) {
-            enableShooterAtSpeed(SHOOTER_TARGET_SPEED_INTAKE_RPM);
+            enableShooterAtSpeed(INTAKE_TARGET_SPEED_INTAKE_RPM);
           }
           disableIntake();
           intakeMotor.setVoltage(intakeOutput);
@@ -235,14 +248,14 @@ public class IoSubsystem extends SubsystemBase {
 
   public Command commandIntakeAuton() {
     return Commands.sequence(
-        this.run(() -> enableShooterAtSpeed(SHOOTER_TARGET_SPEED_INTAKE_RPM))
+        this.run(() -> enableShooterAtSpeed(INTAKE_TARGET_SPEED_INTAKE_RPM))
             .withTimeout(INTAKE_AUTON_SPIN_UP_SECONDS),
         this.run(
             () -> {
-              enableShooterAtSpeed(SHOOTER_TARGET_SPEED_INTAKE_RPM);
+              enableShooterAtSpeed(INTAKE_TARGET_SPEED_INTAKE_RPM);
               enableIntakeAtSpeed(INTAKE_TARGET_SPEED_RPM);
               double current = getShooterSpeedRpm();
-              boolean atSpeed = current >= SHOOTER_TARGET_SPEED_INTAKE_RPM * SHOOTER_SPINUP_THRESHOLD_FRACTION;
+              boolean atSpeed = current >= INTAKE_TARGET_SPEED_INTAKE_RPM * SHOOTER_SPINUP_THRESHOLD_FRACTION;
               loaderMotor.set(atSpeed ? LAUNCHING_LOADER_OUTPUT : 0.0);
             })
             .finallyDo(interrupted -> {
@@ -258,10 +271,10 @@ public class IoSubsystem extends SubsystemBase {
   public Command commandPrepare() {
     return this.run(
         () -> {
-          enableShooterAtSpeed(SHOOTER_TARGET_SPEED_INTAKE_RPM);
+          enableShooterAtSpeed(INTAKE_TARGET_SPEED_INTAKE_RPM);
           enableIntakeAtSpeed(INTAKE_TARGET_SPEED_RPM);
           double current = getShooterSpeedRpm();
-          boolean atSpeed = current >= SHOOTER_TARGET_SPEED_INTAKE_RPM * SHOOTER_SPINUP_THRESHOLD_FRACTION;
+          boolean atSpeed = current >= INTAKE_TARGET_SPEED_INTAKE_RPM * SHOOTER_SPINUP_THRESHOLD_FRACTION;
           loaderMotor.set(atSpeed ? PREPARING_LOADER_OUTPUT : 0.0);
         }).finallyDo(interrupted -> {
           disableIntake();
@@ -312,23 +325,52 @@ public class IoSubsystem extends SubsystemBase {
    * enabled.
    */
   public Command commandLaunch() {
+    return createLaunchCommand(SHOOTER_TARGET_SPEED_LAUNCH_RPM);
+  }
+
+  /**
+   * High-speed shoot: similar to {@link #commandLaunch()} but with a higher
+   * shooter RPM for a stronger shot.
+   */
+  public Command commandHighSpeedLaunch() {
+    return createLaunchCommand(SHOOTER_TARGET_SPEED_HIGH_RPM);
+  }
+
+  /**
+   * Ultra-speed shoot: highest shooter RPM for long-range shots.
+   */
+  public Command commandUltraSpeedLaunch() {
+    return createLaunchCommand(SHOOTER_TARGET_SPEED_ULTRA_RPM);
+  }
+
+  /**
+   * Common implementation for launch-style commands that spin up the shooter to
+   * a given RPM and then conditionally feed intake + loader once at speed.
+   */
+  private Command createLaunchCommand(double shooterRpm) {
     return Commands.sequence(
-        // Spin up shooter first using encoder control.
-        this.run(() -> enableShooterAtSpeed(SHOOTER_TARGET_SPEED_LAUNCH_RPM))
-            .withTimeout(INTAKE_SPIN_UP_SECONDS),
-        // Then run shooter at speed while feeding intake and loader.
+        // Phase 1: spin up shooter until near target (or timeout).
         this.run(
             () -> {
-              enableShooterAtSpeed(SHOOTER_TARGET_SPEED_LAUNCH_RPM);
-              // Only feed balls once shooter is near target speed.
+              enableShooterAtSpeed(shooterRpm);
               double current = getShooterSpeedRpm();
-              boolean atSpeed = current >= SHOOTER_TARGET_SPEED_LAUNCH_RPM * SHOOTER_SPINUP_THRESHOLD_FRACTION;
-              loaderMotor.set(atSpeed ? LAUNCHING_LOADER_OUTPUT : 0.0);
+              boolean atSpeed = current >= shooterRpm * SHOOTER_SPINUP_THRESHOLD_FRACTION;
+              // Only allow loader/intake once we are near the main shot speed.
               if (atSpeed) {
+                loaderMotor.set(LAUNCHING_LOADER_OUTPUT);
                 enableIntakeAtSpeed(INTAKE_TARGET_SPEED_RPM);
               } else {
+                loaderMotor.set(0.0);
                 disableIntake();
               }
+            })
+            .withTimeout(LAUNCH_SPIN_UP_SECONDS),
+        // Phase 2: once spun up, keep feeding while command is held.
+        this.run(
+            () -> {
+              enableShooterAtSpeed(shooterRpm);
+              loaderMotor.set(LAUNCHING_LOADER_OUTPUT);
+              enableIntakeAtSpeed(INTAKE_TARGET_SPEED_RPM);
             })
             .finallyDo(interrupted -> {
               // Stop loader and intake when command ends; shooter only stays on if the
@@ -339,90 +381,6 @@ public class IoSubsystem extends SubsystemBase {
                 disableShooter();
               }
             }));
-  }
-
-  /**
-   * High-speed shoot: similar to {@link #commandLaunch()} but with a higher
-   * shooter RPM for a stronger shot.
-   */
-  public Command commandHighSpeedLaunch() {
-    final double highSpeedRpm = SHOOTER_TARGET_SPEED_HIGH_RPM;
-    return Commands.sequence(
-        this.run(() -> enableShooterAtSpeed(highSpeedRpm))
-            .withTimeout(INTAKE_SPIN_UP_SECONDS),
-        this.run(
-            () -> {
-              enableShooterAtSpeed(highSpeedRpm);
-              double current = getShooterSpeedRpm();
-              boolean atSpeed =
-                  current >= highSpeedRpm * SHOOTER_SPINUP_THRESHOLD_FRACTION;
-              loaderMotor.set(atSpeed ? LAUNCHING_LOADER_OUTPUT : 0.0);
-              if (atSpeed) {
-                enableIntakeAtSpeed(INTAKE_TARGET_SPEED_RPM);
-              } else {
-                disableIntake();
-              }
-            })
-            .finallyDo(interrupted -> {
-              loaderMotor.set(0.0);
-              disableIntake();
-              if (!spinUp50Requested) {
-                disableShooter();
-              }
-            }));
-  }
-
-  /**
-   * Ultra-speed shoot: highest shooter RPM for long-range shots.
-   */
-  public Command commandUltraSpeedLaunch() {
-    final double ultraRpm = SHOOTER_TARGET_SPEED_ULTRA_RPM;
-    return Commands.sequence(
-        this.run(() -> enableShooterAtSpeed(ultraRpm))
-            .withTimeout(INTAKE_SPIN_UP_SECONDS),
-        this.run(
-            () -> {
-              enableShooterAtSpeed(ultraRpm);
-              double current = getShooterSpeedRpm();
-              boolean atSpeed =
-                  current >= ultraRpm * SHOOTER_SPINUP_THRESHOLD_FRACTION;
-              loaderMotor.set(atSpeed ? LAUNCHING_LOADER_OUTPUT : 0.0);
-              if (atSpeed) {
-                enableIntakeAtSpeed(INTAKE_TARGET_SPEED_RPM);
-              } else {
-                disableIntake();
-              }
-            })
-            .finallyDo(interrupted -> {
-              loaderMotor.set(0.0);
-              disableIntake();
-              if (!spinUp50Requested) {
-                disableShooter();
-              }
-            }));
-  }
-
-  /**
-   * Intake pulsing helper: repeated until the command is interrupted.
-   * Uses INTAKE_PULSE_ON_SECONDS and INTAKE_PULSE_OFF_SECONDS from Constants.
-   */
-  public Command commandIntakePulse() {
-    edu.wpi.first.wpilibj.Timer timer = new edu.wpi.first.wpilibj.Timer();
-    return Commands.run(
-        () -> {
-          disableIntake();
-          double time = timer.get();
-          double cycleTime = INTAKE_PULSE_ON_SECONDS + INTAKE_PULSE_OFF_SECONDS;
-          double currentCycleTime = time % cycleTime;
-          
-          if (currentCycleTime < INTAKE_PULSE_ON_SECONDS) {
-            intakeMotor.setVoltage(INTAKING_INTAKE_OUTPUT);
-          } else {
-            intakeMotor.setVoltage(0.0);
-          }
-        })
-        .beforeStarting(timer::restart)
-        .finallyDo(interrupted -> disableIntake());
   }
 
   /** Eject: flywheel off; intake and loader run in reverse. */
@@ -452,7 +410,7 @@ public class IoSubsystem extends SubsystemBase {
   }
 
   public Command commandMaxSpin() {
-    return this.run(() -> enableShooterAtSpeed(SHOOTER_TARGET_SPEED_INTAKE_RPM * 1.2));
+    return this.run(() -> enableShooterAtSpeed(INTAKE_TARGET_SPEED_INTAKE_RPM * 1.2));
   }
 
   /** Reverse flywheel and run loader (Y button). */
