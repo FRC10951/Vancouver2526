@@ -4,8 +4,6 @@
 
 package frc.robot;
 
-import static frc.robot.Constants.DriveConstants.GEAR_RATIO;
-
 /**
  * Robot-wide constants: CAN IDs, current limits, voltages, and operator
  * scaling.
@@ -19,7 +17,7 @@ public final class Constants {
     public static final int RIGHT_FOLLOWER_ID = 7;
 
     public static final int DRIVE_MOTOR_CURRENT_LIMIT = 60;
-    /** Wheel diameter in meters (e.g. 6 in ≈ 0.1524 m). */
+    /** Wheel diameter in meters (e.g. 6 in ~ 0.1524 m). */
     public static final double WHEEL_DIAMETER_METERS = 0.1524;
     /** Gear ratio motor-to-wheel (e.g. 10.71 for KitBot). */
     public static final double GEAR_RATIO = 2.25;
@@ -41,10 +39,45 @@ public final class Constants {
     public static final double AUTO_TURN_DISTANCE_SCALAR = 0.125;
   }
 
+  /**
+   * Rough physical parameters for desktop simulation only ({@code simulateJava}).
+   * Tune MOI if you need encoder traces to match hardware better.
+   */
+  public static final class SimulationConstants {
+    public static final double SHOOTER_FLYWHEEL_J_KG_M2 = 0.0004;
+    public static final double INTAKE_ROLLER_J_KG_M2 = 0.00015;
+    public static final double LOADER_ROLLER_J_KG_M2 = 0.00005;
+    /** Drivetrain moment of inertia about the robot center (kg m^2). */
+    public static final double DRIVEBASE_J_KG_M2 = 5.0;
+    /** Robot mass for simulation (38 kg). */
+    public static final double DRIVEBASE_MASS_KG = 38.0;
+  }
+
+  /**
+   * Battery thresholds for dashboard / {@link frc.robot.MatchReadiness}. Code
+   * does
+   * not automatically block shooting when low; tune on your robot.
+   */
+  public static final class ElectricalConstants {
+    /**
+     * Below this RoboRIO-reported bus voltage (V), brownouts are more likely and
+     * shooter wheel regulation may not hold RPM reliably. Do not trust marginal
+     * shots for critical scoring; reduce simultaneous motor load (drive + intake)
+     * and let the battery recover, or retune PID/FF for lower-voltage behavior.
+     * Measure under full match load and adjust this threshold.
+     */
+    public static final double MIN_BATTERY_VOLTS_FOR_CRITICAL_SHOT = 10.5;
+    /**
+     * Below this voltage, {@link frc.robot.MatchReadiness#isBatteryInCautionBand()}
+     * is true (still at or above {@link #MIN_BATTERY_VOLTS_FOR_CRITICAL_SHOT}).
+     */
+    public static final double BATTERY_CAUTION_VOLTS = 11.0;
+  }
+
   public static final class IoConstants {
     public static final int IO_MOTOR_ID = 9;
     /**
-     * Intake (12) – pulls fuel from floor/storage. Anti-clockwise = intake;
+     * Intake (12) - pulls fuel from floor/storage. Anti-clockwise = intake;
      * clockwise = spit out.
      */
     public static final int INTAKE_MOTOR_ID = 12;
@@ -67,14 +100,22 @@ public final class Constants {
     /** Target shooter speed (RPM) when using the right-trigger toggle. */
     public static final double SHOOTER_TARGET_SPEED_TOGGLE_RPM = INTAKE_TARGET_SPEED_INTAKE_RPM;
     /** Target shooter speed (RPM) for the main launch shot. */
-    public static final double SHOOTER_TARGET_SPEED_LAUNCH_RPM = 3200.0;
-    /** Target shooter speed (RPM) for a high-speed shot (A button). */
-    public static final double SHOOTER_TARGET_SPEED_HIGH_RPM = 5500.0;
+    public static final double SHOOTER_TARGET_SPEED_LAUNCH_RPM = 3300.0;
+    /** Target shooter speed (RPM) for a high-speed shot (A buttosn). */
+    public static final double SHOOTER_TARGET_SPEED_HIGH_RPM = 3900.0;
     /** Target shooter speed (RPM) for an ultra-speed shot (long range). */
-    public static final double SHOOTER_TARGET_SPEED_ULTRA_RPM = 6000.0;
+    public static final double SHOOTER_TARGET_SPEED_ULTRA_RPM = 4500.0;
 
-    /** Proportional gain for shooter speed control (simple P loop). */
+    /** Proportional gain for shooter velocity PID (RPM to volts via loop). */
     public static final double SHOOTER_KP = 0.003;
+    /** Integral gain; reduces steady-state RPM error (tune on robot). */
+    public static final double SHOOTER_KI = 4.0e-4;
+    /**
+     * Derivative gain on RPM error. Often left at 0 for encoder velocity (noisy);
+     * increase slightly only if you see slow oscillation and logs look clean.
+     */
+    public static final double SHOOTER_KD = 0.0;
+
     /**
      * Fraction of target speed below which we apply max voltage to spin up quickly.
      * For example, 0.8 means full voltage until 80% of target speed is reached.
@@ -85,10 +126,29 @@ public final class Constants {
     public static final double SHOOTER_MAX_VOLTAGE = 12.0;
 
     /**
-     * Nominal voltage used as a baseline during speed holding; P-control adjusts
-     * around this.
+     * Nominal voltage used as a baseline during speed holding; combined with PID as
+     * feedforward {@code ff = SHOOTER_VELOCITY_FF_VOLTS_PER_RPM * targetRpm}.
      */
     public static final double SHOOTER_HOLD_BASE_VOLTAGE = 7.0;
+
+    /**
+     * Feedforward volts per RPM (matches hold voltage at launch speed). PID trims
+     * residual error.
+     */
+    public static final double SHOOTER_VELOCITY_FF_VOLTS_PER_RPM = SHOOTER_HOLD_BASE_VOLTAGE
+        / SHOOTER_TARGET_SPEED_LAUNCH_RPM;
+
+    /**
+     * Static friction term (volts) for
+     * {@link edu.wpi.first.math.controller.SimpleMotorFeedforward}.
+     * Leave 0 until SysId; then paste characterized kS here.
+     */
+    public static final double SHOOTER_KS_VOLTS = 0.0;
+    /**
+     * Acceleration feedforward (volts per (RPM/s)); 0 until SysId characterizes kA
+     * in these units.
+     */
+    public static final double SHOOTER_KA_VOLTS_PER_RPM_PER_S = 0.0;
 
     // -----------------------------------------------------------------------
     // Intake speed control (encoder-based, same pattern as shooter)
@@ -96,14 +156,28 @@ public final class Constants {
 
     /** Target intake speed (RPM) for intake/feed behavior. Negative = intake in. */
     public static final double INTAKE_TARGET_SPEED_RPM = -2500.0;
-    /** Proportional gain for intake speed control (simple P loop). */
+    /** Proportional gain for intake velocity PID. */
     public static final double INTAKE_KP = 0.0025;
+    /** Integral gain (tune on robot). */
+    public static final double INTAKE_KI = 3.0e-4;
+    /** Derivative gain; often 0 for encoder velocity. */
+    public static final double INTAKE_KD = 0.0;
     /** Spin-up threshold fraction before switching to hold control. */
     public static final double INTAKE_SPINUP_THRESHOLD_FRACTION = 0.8;
     /** Absolute maximum intake voltage command. */
     public static final double INTAKE_MAX_VOLTAGE = 11.5;
     /** Baseline intake hold voltage (signed toward intake direction). */
     public static final double INTAKE_HOLD_BASE_VOLTAGE = -6.9;
+
+    /**
+     * Feedforward volts per RPM (matches hold at {@link #INTAKE_TARGET_SPEED_RPM}).
+     */
+    public static final double INTAKE_VELOCITY_FF_VOLTS_PER_RPM = INTAKE_HOLD_BASE_VOLTAGE / INTAKE_TARGET_SPEED_RPM;
+
+    /** Intake static friction (volts); 0 until SysId. */
+    public static final double INTAKE_KS_VOLTS = 0.0;
+    /** Intake acceleration FF (volts per (RPM/s)); 0 until SysId. */
+    public static final double INTAKE_KA_VOLTS_PER_RPM_PER_S = 0.0;
 
     // -----------------------------------------------------------------------
     // Intake / loader outputs (still open-loop on those motors)
@@ -117,7 +191,7 @@ public final class Constants {
      */
     public static final double LOADER_MOTOR_TARGET_VOLTAGE = -6.0;
     /**
-     * Loader duty cycle (0–1) corresponding to {@link #LOADER_MOTOR_TARGET_VOLTAGE}
+     * Loader duty cycle (0-1) corresponding to {@link #LOADER_MOTOR_TARGET_VOLTAGE}
      * on a 12 V bus.
      */
     public static final double INTAKING_LOADER_OUTPUT = LOADER_MOTOR_TARGET_VOLTAGE / 12.0;
@@ -125,7 +199,7 @@ public final class Constants {
     public static final double PREPARING_LOADER_OUTPUT = 0.0;
 
     /**
-     * Loader duty cycle (0–1) for launching at fixed speed (opposite direction of
+     * Loader duty cycle (0-1) for launching at fixed speed (opposite direction of
      * intake).
      */
     public static final double LAUNCHING_LOADER_OUTPUT = -INTAKING_LOADER_OUTPUT;
@@ -185,8 +259,8 @@ public final class Constants {
 
   /**
    * Autonomous constants based on FRC 2026 REBUILT field.
-   * Field: 317.7 in × 651.2 in. Center line bisects the 651.2 in length.
-   * HUB is 158.6 in (~4.03 m) from each alliance wall → center to HUB ≈ 167 in
+   * Field: 317.7 in x 651.2 in. Center line bisects the 651.2 in length.
+   * HUB is 158.6 in (~4.03 m) from each alliance wall; center to HUB ~ 167 in
    * (4.24 m).
    * We drive from center toward our HUB and stop at estimated shooting range (~2
    * m in front of HUB).
@@ -205,13 +279,15 @@ public final class Constants {
     /** Basic auto: shoot duration (seconds). */
     public static final double BASIC_SHOOT_SECONDS = 3.0;
     /**
-     * Basic auto: turn 30° starboard (right) — rotation rate [0, 1]. Positive =
+     * Basic auto: turn 30 deg starboard (right) - rotation rate [0, 1]. Positive =
      * right.
      */
     public static final double TURN_30_STARBOARD_SPEED = 0.35;
-    /** Basic auto: time (seconds) to turn ~30° starboard. Tune to match robot. */
+    /**
+     * Basic auto: time (seconds) to turn ~30 deg starboard. Tune to match robot.
+     */
     public static final double TURN_30_STARBOARD_SECONDS = 1.2;
-    /** Basic auto: drive forward while intaking — duration (seconds). */
+    /** Basic auto: drive forward while intaking - duration (seconds). */
     public static final double DRIVE_AND_INTAKE_SECONDS = 3.0;
     /** Basic auto: forward speed [0, 1] during drive-and-intake. */
     public static final double DRIVE_AND_INTAKE_SPEED = 0.5;

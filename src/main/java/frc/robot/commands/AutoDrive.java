@@ -17,7 +17,7 @@ import frc.robot.subsystems.CANDriveSubsystem;
  * bound duration.
  *
  * <p>
- * Example — drive straight for 2 seconds:
+ * Example: drive straight for 2 seconds:
  * 
  * <pre>
  * new AutoDrive(driveSubsystem, 0.5, 0.0).withTimeout(2)
@@ -45,7 +45,7 @@ public class AutoDrive extends Command {
   public void initialize() {
   }
 
-  // Called every loop while scheduled — feeding driveArcade continuously
+  // Called every loop while scheduled; feeding driveArcade continuously
   // keeps the motor-safety watchdog satisfied
   @Override
   public void execute() {
@@ -57,7 +57,7 @@ public class AutoDrive extends Command {
     driveSubsystem.stop();
   }
 
-  // Never finishes on its own — use .withTimeout() to bound its duration
+  // Never finishes on its own; use .withTimeout() to bound its duration
   @Override
   public boolean isFinished() {
     return false;

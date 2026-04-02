@@ -7,15 +7,24 @@ package frc.robot.subsystems;
 import com.revrobotics.PersistMode;
 import com.revrobotics.ResetMode;
 import com.revrobotics.RelativeEncoder;
+import com.revrobotics.sim.SparkMaxSim;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
+import edu.wpi.first.math.system.plant.DCMotor;
+import edu.wpi.first.wpilibj.RobotBase;
+import edu.wpi.first.wpilibj.RobotController;
+import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
+import edu.wpi.first.wpilibj.simulation.DifferentialDrivetrainSim;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
+import frc.robot.util.DriveEncoderMath;
+import frc.robot.util.SparkMaxFaultReporter;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Constants;
 import static frc.robot.Constants.DriveConstants.*;
 
 /**
@@ -43,7 +52,21 @@ public class CANDriveSubsystem extends SubsystemBase {
   // private final EncoderSim leftEncoderSim;
   // private final EncoderSim rightEncoderSim;
 
-  private static final double METERS_PER_ROTATION = (Math.PI * WHEEL_DIAMETER_METERS) / GEAR_RATIO;
+  private static final double METERS_PER_ROTATION =
+      DriveEncoderMath.metersPerMotorRotation(WHEEL_DIAMETER_METERS, GEAR_RATIO);
+
+  private final SparkMaxFaultReporter leftLeaderFaults =
+      new SparkMaxFaultReporter("Drive/Left leader");
+  private final SparkMaxFaultReporter leftFollowerFaults =
+      new SparkMaxFaultReporter("Drive/Left follower");
+  private final SparkMaxFaultReporter rightLeaderFaults =
+      new SparkMaxFaultReporter("Drive/Right leader");
+  private final SparkMaxFaultReporter rightFollowerFaults =
+      new SparkMaxFaultReporter("Drive/Right follower");
+
+  private DifferentialDrivetrainSim drivetrainSim;
+  private SparkMaxSim leftLeaderSim;
+  private SparkMaxSim rightLeaderSim;
 
   public CANDriveSubsystem() {
     // Create brushed motors for a KitBot-style CIM drivetrain
@@ -86,9 +109,43 @@ public class CANDriveSubsystem extends SubsystemBase {
     leftEncoder = leftLeader.getEncoder();
     rightEncoder = rightLeader.getEncoder();
 
-    // setup simulation
-    // leftEncoderSim = new EncoderSim(leftEncoder);
-    // rightEncoderSim = new EncoderSim(rightEncoder);
+    if (RobotBase.isSimulation()) {
+      drivetrainSim =
+          new DifferentialDrivetrainSim(
+              DCMotor.getCIM(2),
+              GEAR_RATIO,
+              Constants.SimulationConstants.DRIVEBASE_J_KG_M2,
+              Constants.SimulationConstants.DRIVEBASE_MASS_KG,
+              WHEEL_DIAMETER_METERS / 2.0,
+              DRIVE_TRACK_WIDTH_METERS,
+              null);
+      leftLeaderSim = new SparkMaxSim(leftLeader, DCMotor.getCIM(2));
+      rightLeaderSim = new SparkMaxSim(rightLeader, DCMotor.getCIM(2));
+    }
+  }
+
+  /**
+   * Desktop simulation: differential drive plant + {@link SparkMaxSim} on leaders so
+   * encoder distances/velocities track motor voltages.
+   */
+  public void simulationPeriodic() {
+    if (drivetrainSim == null) {
+      return;
+    }
+    double dt = TimedRobot.kDefaultPeriod;
+    double vbus = RobotController.getBatteryVoltage();
+    double leftVolts = leftLeader.getAppliedOutput() * vbus;
+    double rightVolts = rightLeader.getAppliedOutput() * vbus;
+    drivetrainSim.setInputs(leftVolts, rightVolts);
+    drivetrainSim.update(dt);
+    double leftMotorRpm =
+        DriveEncoderMath.wheelLinearVelocityToMotorRpm(
+            drivetrainSim.getLeftVelocityMetersPerSecond(), WHEEL_DIAMETER_METERS, GEAR_RATIO);
+    double rightMotorRpm =
+        DriveEncoderMath.wheelLinearVelocityToMotorRpm(
+            drivetrainSim.getRightVelocityMetersPerSecond(), WHEEL_DIAMETER_METERS, GEAR_RATIO);
+    leftLeaderSim.iterate(leftMotorRpm, vbus, dt);
+    rightLeaderSim.iterate(rightMotorRpm, vbus, dt);
   }
 
   // ---------------------------------------------------------------------------
@@ -102,6 +159,11 @@ public class CANDriveSubsystem extends SubsystemBase {
     SmartDashboard.putNumber("Right Distance (m)", getRightDistanceMeters());
     SmartDashboard.putNumber("Left Velocity (m/s)", getLeftVelocityMetersPerSecond());
     SmartDashboard.putNumber("Right Velocity (m/s)", getRightVelocityMetersPerSecond());
+
+    leftLeaderFaults.reportPeriodic(leftLeader);
+    leftFollowerFaults.reportPeriodic(leftFollower);
+    rightLeaderFaults.reportPeriodic(rightLeader);
+    rightFollowerFaults.reportPeriodic(rightFollower);
   }
 
   // ---------------------------------------------------------------------------
@@ -183,7 +245,7 @@ public class CANDriveSubsystem extends SubsystemBase {
   }
 
   /**
-   * Returns right-side kvelocity in meters per second.
+   * Returns right-side velocity in meters per second.
    */
   public double getRightVelocityMetersPerSecond() {
     return (rightEncoder.getVelocity() / 60.0) * METERS_PER_ROTATION;

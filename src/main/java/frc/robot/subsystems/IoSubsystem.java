@@ -1,18 +1,37 @@
+// Copyright (c) FIRST and other WPILib contributors.
+// Open Source Software; you can modify and/or share it under the terms of
+// the WPILib BSD license file in the root directory of this project.
+
 package frc.robot.subsystems;
 
 import com.revrobotics.PersistMode;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.ResetMode;
+import com.revrobotics.sim.SparkMaxSim;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
+import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.controller.SimpleMotorFeedforward;
+import edu.wpi.first.math.system.plant.DCMotor;
+import edu.wpi.first.math.system.plant.LinearSystemId;
+import edu.wpi.first.wpilibj.RobotBase;
+import edu.wpi.first.wpilibj.RobotController;
+import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.simulation.FlywheelSim;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
+import frc.robot.MatchReadiness;
+import frc.robot.logging.RobotTelemetryLog;
+import frc.robot.util.IoControlMath;
+import frc.robot.util.SparkMaxFaultReporter;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import static frc.robot.Constants.IoConstants.*;
 
+import frc.robot.Constants;
 import frc.robot.Constants.IoConstants.IoCanIdGroup;
 
 /**
@@ -39,6 +58,35 @@ public class IoSubsystem extends SubsystemBase {
   private double intakeTargetSpeedRpm = 0.0;
   private final SparkMax loaderMotor;
 
+  private final PIDController shooterVelocityPid =
+      new PIDController(SHOOTER_KP, SHOOTER_KI, SHOOTER_KD);
+  private final PIDController intakeVelocityPid =
+      new PIDController(INTAKE_KP, INTAKE_KI, INTAKE_KD);
+  private final SimpleMotorFeedforward shooterFeedforward =
+      new SimpleMotorFeedforward(
+          SHOOTER_KS_VOLTS,
+          SHOOTER_VELOCITY_FF_VOLTS_PER_RPM,
+          SHOOTER_KA_VOLTS_PER_RPM_PER_S);
+  private final SimpleMotorFeedforward intakeFeedforward =
+      new SimpleMotorFeedforward(
+          INTAKE_KS_VOLTS,
+          INTAKE_VELOCITY_FF_VOLTS_PER_RPM,
+          INTAKE_KA_VOLTS_PER_RPM_PER_S);
+
+  private final SparkMaxFaultReporter flywheelFaultReporter =
+      new SparkMaxFaultReporter("IO/Flywheel");
+  private final SparkMaxFaultReporter intakeFaultReporter =
+      new SparkMaxFaultReporter("IO/Intake");
+  private final SparkMaxFaultReporter loaderFaultReporter =
+      new SparkMaxFaultReporter("IO/Loader");
+
+  private SparkMaxSim flywheelSim;
+  private SparkMaxSim intakeSim;
+  private SparkMaxSim loaderSim;
+  private FlywheelSim shooterPlant;
+  private FlywheelSim intakePlant;
+  private FlywheelSim loaderPlant;
+
   public IoSubsystem() {
     this(IO_CAN_IDS);
   }
@@ -63,13 +111,88 @@ public class IoSubsystem extends SubsystemBase {
     loaderConfig.smartCurrentLimit(LOADER_MOTOR_CURRENT_LIMIT);
     loaderMotor.configure(loaderConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
+    double shooterIMax = SHOOTER_MAX_VOLTAGE / Math.max(SHOOTER_KI, 1e-9);
+    shooterVelocityPid.setIntegratorRange(-shooterIMax, shooterIMax);
+    double intakeIMax = INTAKE_MAX_VOLTAGE / Math.max(INTAKE_KI, 1e-9);
+    intakeVelocityPid.setIntegratorRange(-intakeIMax, intakeIMax);
+
+    SmartDashboard.putData("IO/Shooter velocity PID", shooterVelocityPid);
+    SmartDashboard.putData("IO/Intake velocity PID", intakeVelocityPid);
+
+    if (RobotBase.isSimulation()) {
+      flywheelSim = new SparkMaxSim(flywheelMotor, DCMotor.getNEO(1));
+      shooterPlant =
+          new FlywheelSim(
+              LinearSystemId.createFlywheelSystem(
+                  DCMotor.getNEO(1), Constants.SimulationConstants.SHOOTER_FLYWHEEL_J_KG_M2, 1.0),
+              DCMotor.getNEO(1));
+      intakeSim = new SparkMaxSim(intakeMotor, DCMotor.getNeo550(1));
+      intakePlant =
+          new FlywheelSim(
+              LinearSystemId.createFlywheelSystem(
+                  DCMotor.getNeo550(1), Constants.SimulationConstants.INTAKE_ROLLER_J_KG_M2, 1.0),
+              DCMotor.getNeo550(1));
+      loaderSim = new SparkMaxSim(loaderMotor, DCMotor.getNeo550(1));
+      loaderPlant =
+          new FlywheelSim(
+              LinearSystemId.createFlywheelSystem(
+                  DCMotor.getNeo550(1), Constants.SimulationConstants.LOADER_ROLLER_J_KG_M2, 1.0),
+              DCMotor.getNeo550(1));
+    }
   }
 
   @Override
   public void periodic() {
-    // Keep shooter speed control running every cycle whenever it is enabled.
     updateShooterControl();
     updateIntakeControl();
+
+    flywheelFaultReporter.reportPeriodic(flywheelMotor);
+    intakeFaultReporter.reportPeriodic(intakeMotor);
+    loaderFaultReporter.reportPeriodic(loaderMotor);
+
+    SmartDashboard.putNumber("IO/Shooter RPM", getShooterSpeedRpm());
+    SmartDashboard.putNumber(
+        "IO/Shooter target RPM", shooterEnabled ? shooterTargetSpeedRpm : 0.0);
+    SmartDashboard.putNumber("IO/Intake RPM", getIntakeSpeedRpm());
+    SmartDashboard.putNumber(
+        "IO/Intake target RPM", intakeEnabled ? intakeTargetSpeedRpm : 0.0);
+
+    SmartDashboard.putNumber("Electrical/Battery V", MatchReadiness.getBatteryVoltage());
+    SmartDashboard.putBoolean(
+        "Electrical/Battery OK for shooter", MatchReadiness.isBatteryHealthyForShooter());
+    SmartDashboard.putBoolean(
+        "Electrical/Battery caution band", MatchReadiness.isBatteryInCautionBand());
+
+    RobotTelemetryLog.recordIo(
+        getShooterSpeedRpm(),
+        shooterEnabled ? shooterTargetSpeedRpm : 0.0,
+        getIntakeSpeedRpm(),
+        intakeEnabled ? intakeTargetSpeedRpm : 0.0);
+  }
+
+  /**
+   * Desktop simulation: advance WPILib {@link FlywheelSim} plants and REV
+   * {@link SparkMaxSim} so encoder RPMs react to voltage commands. No-op on the
+   * roboRIO.
+   */
+  public void simulationPeriodic() {
+    if (flywheelSim == null) {
+      return;
+    }
+    double dt = TimedRobot.kDefaultPeriod;
+    double vbus = RobotController.getBatteryVoltage();
+
+    shooterPlant.setInputVoltage(flywheelMotor.getAppliedOutput() * vbus);
+    shooterPlant.update(dt);
+    flywheelSim.iterate(shooterPlant.getAngularVelocityRPM(), vbus, dt);
+
+    intakePlant.setInputVoltage(intakeMotor.getAppliedOutput() * vbus);
+    intakePlant.update(dt);
+    intakeSim.iterate(intakePlant.getAngularVelocityRPM(), vbus, dt);
+
+    loaderPlant.setInputVoltage(loaderMotor.getAppliedOutput() * vbus);
+    loaderPlant.update(dt);
+    loaderSim.iterate(loaderPlant.getAngularVelocityRPM(), vbus, dt);
   }
 
   /** Set flywheel motor by voltage and loader by duty cycle (0?1). */
@@ -99,6 +222,7 @@ public class IoSubsystem extends SubsystemBase {
   public void disableShooter() {
     shooterEnabled = false;
     shooterTargetSpeedRpm = 0.0;
+    shooterVelocityPid.reset();
     flywheelMotor.setVoltage(0.0);
   }
 
@@ -112,6 +236,7 @@ public class IoSubsystem extends SubsystemBase {
   public void disableIntake() {
     intakeEnabled = false;
     intakeTargetSpeedRpm = 0.0;
+    intakeVelocityPid.reset();
     intakeMotor.setVoltage(0.0);
   }
 
@@ -121,6 +246,8 @@ public class IoSubsystem extends SubsystemBase {
     shooterTargetSpeedRpm = 0.0;
     intakeEnabled = false;
     intakeTargetSpeedRpm = 0.0;
+    shooterVelocityPid.reset();
+    intakeVelocityPid.reset();
   }
 
   public Command commandStop() {
@@ -162,8 +289,7 @@ public class IoSubsystem extends SubsystemBase {
   }
 
   /**
-   * Simple closed-loop control for shooter speed using encoder feedback.
-   * Uses a spinup region with max voltage, then P-control around a base voltage.
+   * Closed-loop shooter speed: max voltage spin-up, then feedforward + PID on RPM.
    */
   private void updateShooterControl() {
     if (!shooterEnabled || shooterTargetSpeedRpm <= 0.0) {
@@ -172,31 +298,25 @@ public class IoSubsystem extends SubsystemBase {
 
     double currentSpeedRpm = getShooterSpeedRpm();
     double target = shooterTargetSpeedRpm;
+    shooterVelocityPid.setSetpoint(target);
 
-    // Spin-up region: below threshold, use max voltage.
+    // Spin-up region: below threshold, use max voltage (no integral windup).
     if (currentSpeedRpm < target * SHOOTER_SPINUP_THRESHOLD_FRACTION) {
-      double commanded = Math.copySign(SHOOTER_MAX_VOLTAGE, target);
-      flywheelMotor.setVoltage(commanded);
+      shooterVelocityPid.reset();
+      flywheelMotor.setVoltage(Math.copySign(SHOOTER_MAX_VOLTAGE, target));
       return;
     }
 
-    // Hold region: P-control around a base voltage.
-    double error = target - currentSpeedRpm;
-    double commanded = SHOOTER_HOLD_BASE_VOLTAGE + SHOOTER_KP * error;
-
-    // Clamp to max voltage.
-    if (commanded > SHOOTER_MAX_VOLTAGE) {
-      commanded = SHOOTER_MAX_VOLTAGE;
-    } else if (commanded < -SHOOTER_MAX_VOLTAGE) {
-      commanded = -SHOOTER_MAX_VOLTAGE;
-    }
+    double ff = shooterFeedforward.calculateWithVelocities(currentSpeedRpm, target);
+    double commanded =
+        IoControlMath.clampSymmetric(
+            ff + shooterVelocityPid.calculate(currentSpeedRpm), SHOOTER_MAX_VOLTAGE);
 
     flywheelMotor.setVoltage(commanded);
   }
 
   /**
-   * Simple closed-loop control for intake speed using encoder feedback.
-   * Mirrors shooter control: spin-up region at max voltage, then P hold.
+   * Closed-loop intake speed: max voltage spin-up, then feedforward + PID on RPM.
    */
   private void updateIntakeControl() {
     if (!intakeEnabled || intakeTargetSpeedRpm == 0.0) {
@@ -205,24 +325,20 @@ public class IoSubsystem extends SubsystemBase {
 
     double currentSpeedRpm = getIntakeSpeedRpm();
     double target = intakeTargetSpeedRpm;
+    intakeVelocityPid.setSetpoint(target);
 
-    if (Math.abs(currentSpeedRpm) < Math.abs(target) * INTAKE_SPINUP_THRESHOLD_FRACTION) {
+    if (IoControlMath.intakeBelowSpinupFraction(
+        currentSpeedRpm, target, INTAKE_SPINUP_THRESHOLD_FRACTION)) {
+      intakeVelocityPid.reset();
       intakeMotor.setVoltage(Math.copySign(INTAKE_MAX_VOLTAGE, target));
       return;
     }
 
-    double error = target - currentSpeedRpm;
-    double commanded = INTAKE_HOLD_BASE_VOLTAGE + INTAKE_KP * error;
+    double ff = intakeFeedforward.calculateWithVelocities(currentSpeedRpm, target);
+    double commanded =
+        IoControlMath.clampSymmetric(
+            ff + intakeVelocityPid.calculate(currentSpeedRpm), INTAKE_MAX_VOLTAGE);
 
-    if (commanded > INTAKE_MAX_VOLTAGE) {
-      commanded = INTAKE_MAX_VOLTAGE;
-    } else if (commanded < -INTAKE_MAX_VOLTAGE) {
-      commanded = -INTAKE_MAX_VOLTAGE;
-    }
-
-    // Ensure we never drive the intake in the opposite direction of the target.
-    // If the controller would overshoot and flip sign, clamp to zero instead
-    // to avoid visible reverse "kicks" and pulsing.
     if (Math.signum(commanded) != 0.0 && Math.signum(commanded) != Math.signum(target)) {
       commanded = 0.0;
     }
@@ -255,7 +371,11 @@ public class IoSubsystem extends SubsystemBase {
               enableShooterAtSpeed(INTAKE_TARGET_SPEED_INTAKE_RPM);
               enableIntakeAtSpeed(INTAKE_TARGET_SPEED_RPM);
               double current = getShooterSpeedRpm();
-              boolean atSpeed = current >= INTAKE_TARGET_SPEED_INTAKE_RPM * SHOOTER_SPINUP_THRESHOLD_FRACTION;
+              boolean atSpeed =
+                  IoControlMath.shooterAtOrAboveFractionOfTarget(
+                      current,
+                      INTAKE_TARGET_SPEED_INTAKE_RPM,
+                      SHOOTER_SPINUP_THRESHOLD_FRACTION);
               loaderMotor.set(atSpeed ? LAUNCHING_LOADER_OUTPUT : 0.0);
             })
             .finallyDo(interrupted -> {
@@ -274,7 +394,11 @@ public class IoSubsystem extends SubsystemBase {
           enableShooterAtSpeed(INTAKE_TARGET_SPEED_INTAKE_RPM);
           enableIntakeAtSpeed(INTAKE_TARGET_SPEED_RPM);
           double current = getShooterSpeedRpm();
-          boolean atSpeed = current >= INTAKE_TARGET_SPEED_INTAKE_RPM * SHOOTER_SPINUP_THRESHOLD_FRACTION;
+          boolean atSpeed =
+              IoControlMath.shooterAtOrAboveFractionOfTarget(
+                  current,
+                  INTAKE_TARGET_SPEED_INTAKE_RPM,
+                  SHOOTER_SPINUP_THRESHOLD_FRACTION);
           loaderMotor.set(atSpeed ? PREPARING_LOADER_OUTPUT : 0.0);
         }).finallyDo(interrupted -> {
           disableIntake();
@@ -301,7 +425,6 @@ public class IoSubsystem extends SubsystemBase {
   public Command commandIntake() {
     return Commands.run(
         () -> {
-          disableShooter();
           enableIntakeAtSpeed(INTAKE_TARGET_SPEED_RPM);
           loaderMotor.set(INTAKING_LOADER_OUTPUT);
         },
@@ -310,11 +433,6 @@ public class IoSubsystem extends SubsystemBase {
         .finallyDo(interrupted -> {
           disableIntake();
           loaderMotor.set(0.0);
-          if (spinUp50Requested) {
-            enableShooterAtSpeed(SHOOTER_TARGET_SPEED_SPINUP50_RPM);
-          } else {
-            disableShooter();
-          }
         });
   }
 
@@ -344,18 +462,31 @@ public class IoSubsystem extends SubsystemBase {
   }
 
   /**
-   * Common implementation for launch-style commands that spin up the shooter to
-   * a given RPM and then conditionally feed intake + loader once at speed.
+   * Phase 1 of teleop launch: spin shooter toward {@code shooterRpm}; loader and
+   * intake stay off until RPM crosses the spin-up threshold (or this phase times
+   * out).
    */
-  private Command createLaunchCommand(double shooterRpm) {
-    return Commands.sequence(
-        // Phase 1: spin up shooter until near target (or timeout).
-        this.run(
+  public Command commandLaunchSpinUpPhase(double shooterRpm) {
+    return createLaunchSpinUpPhase(shooterRpm);
+  }
+
+  /**
+   * Phase 2 of teleop launch: hold shooter setpoint and run loader + intake
+   * continuously. Pair with {@link #commandLaunchSpinUpPhase(double)} when
+   * another subsystem (e.g. drivetrain wiggle) must not start until spin-up.
+   */
+  public Command commandLaunchSustainPhase(double shooterRpm) {
+    return createLaunchSustainPhase(shooterRpm);
+  }
+
+  private Command createLaunchSpinUpPhase(double shooterRpm) {
+    return this.run(
             () -> {
               enableShooterAtSpeed(shooterRpm);
               double current = getShooterSpeedRpm();
-              boolean atSpeed = current >= shooterRpm * SHOOTER_SPINUP_THRESHOLD_FRACTION;
-              // Only allow loader/intake once we are near the main shot speed.
+              boolean atSpeed =
+                  IoControlMath.shooterAtOrAboveFractionOfTarget(
+                      current, shooterRpm, SHOOTER_SPINUP_THRESHOLD_FRACTION);
               if (atSpeed) {
                 loaderMotor.set(LAUNCHING_LOADER_OUTPUT);
                 enableIntakeAtSpeed(INTAKE_TARGET_SPEED_RPM);
@@ -364,23 +495,32 @@ public class IoSubsystem extends SubsystemBase {
                 disableIntake();
               }
             })
-            .withTimeout(LAUNCH_SPIN_UP_SECONDS),
-        // Phase 2: once spun up, keep feeding while command is held.
-        this.run(
+        .withTimeout(LAUNCH_SPIN_UP_SECONDS);
+  }
+
+  private Command createLaunchSustainPhase(double shooterRpm) {
+    return this.run(
             () -> {
               enableShooterAtSpeed(shooterRpm);
               loaderMotor.set(LAUNCHING_LOADER_OUTPUT);
               enableIntakeAtSpeed(INTAKE_TARGET_SPEED_RPM);
             })
-            .finallyDo(interrupted -> {
-              // Stop loader and intake when command ends; shooter only stays on if the
-              // X-button spin-up mode is enabled (persistent spin-up).
-              loaderMotor.set(0.0);
-              disableIntake();
-              if (!spinUp50Requested) {
-                disableShooter();
-              }
-            }));
+        .finallyDo(interrupted -> {
+          loaderMotor.set(0.0);
+          disableIntake();
+          if (!spinUp50Requested) {
+            disableShooter();
+          }
+        });
+  }
+
+  /**
+   * Common implementation for launch-style commands that spin up the shooter to
+   * a given RPM and then conditionally feed intake + loader once at speed.
+   */
+  private Command createLaunchCommand(double shooterRpm) {
+    return Commands.sequence(
+        createLaunchSpinUpPhase(shooterRpm), createLaunchSustainPhase(shooterRpm));
   }
 
   /** Eject: flywheel off; intake and loader run in reverse. */
@@ -419,6 +559,7 @@ public class IoSubsystem extends SubsystemBase {
     // controller because it is only for clearing jams.
     return this.run(
         () -> {
+          disableShooter();
           flywheelMotor.setVoltage(-SHOOTER_MAX_VOLTAGE / 2.0);
           loaderMotor.set(INTAKING_LOADER_OUTPUT);
           disableIntake();
