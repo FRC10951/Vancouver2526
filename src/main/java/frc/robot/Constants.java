@@ -32,6 +32,21 @@ public final class Constants {
     /** How fast the intake wiggles back and forth to unjam balls. */
     public static final double INTAKE_WIGGLE_SPEED = 0.45;
 
+    /** Half-period (seconds) for each forward or backward segment of drivetrain wiggle while shooting. */
+    public static final double INTAKE_WIGGLE_HALF_PERIOD_SECONDS = 0.10;
+
+    /**
+     * While shooting, one longer full shake at this interval (seconds). Same throttle
+     * as the small wiggle; normal wiggle runs for the remainder of each interval.
+     */
+    public static final double INTAKE_WIGGLE_HARD_SHAKE_INTERVAL_SECONDS = 2.0;
+
+    /**
+     * Each half of the periodic large shake lasts this multiple of {@link #INTAKE_WIGGLE_HALF_PERIOD_SECONDS}
+     * (same {@link #INTAKE_WIGGLE_SPEED} as the small wiggle, so the robot moves farther each way).
+     */
+    public static final double INTAKE_WIGGLE_HARD_SHAKE_HALF_PERIOD_MULTIPLIER = 3.0;
+
     /**
      * Scalar applied to encoder-only turn distance calculations.
      * If the robot over-rotates, decrease this; if it under-rotates, increase it.
@@ -75,13 +90,29 @@ public final class Constants {
   }
 
   public static final class IoConstants {
+    /** Flywheel Kraken X60 on Talon FX (CAN id unchanged from prior wiring). */
     public static final int IO_MOTOR_ID = 9;
     /**
-     * Intake (12) - pulls fuel from floor/storage. Anti-clockwise = intake;
-     * clockwise = spit out.
+     * Intake Kraken X60 on Talon FX (12) - pulls fuel from floor/storage.
+     * Anti-clockwise = intake; clockwise = spit out.
      */
     public static final int INTAKE_MOTOR_ID = 12;
     public static final int LOADER_MOTOR_ID = 19;
+
+    /**
+     * CAN bus for flywheel and intake {@code TalonFX} instances. Leave empty for
+     * the RoboRIO onboard CAN. If those controllers are on a CANivore, set this to
+     * the bus name shown in Phoenix Tuner (e.g. {@code "canivore"}), or the code
+     * will never see those devices and you will get stale-frame / firmware
+     * errors.
+     *
+     * <p>
+     * If those CAN IDs still have SPARK MAX controllers, Phoenix will never
+     * get a reply (same console spam); use Talon FX hardware or revert the
+     * subsystem to SPARK for those motors.
+     */
+    public static final String IO_TALONFX_CAN_BUS = "";
+
     /** Current limits (amps) for IO / intake / loader motors. */
     public static final int IO_MOTOR_CURRENT_LIMIT = 60;
     public static final int INTAKE_MOTOR_CURRENT_LIMIT = 60;
@@ -94,13 +125,13 @@ public final class Constants {
     // -----------------------------------------------------------------------
 
     /** Target shooter speed (RPM) for the main shooting/intake command. */
-    public static final double INTAKE_TARGET_SPEED_INTAKE_RPM = 2000.0;
+    public static final double INTAKE_TARGET_SPEED_INTAKE_RPM = 500.0;
     /** Target shooter speed (RPM) for the 50% spin-up toggle. */
     public static final double SHOOTER_TARGET_SPEED_SPINUP50_RPM = 1500.0;
     /** Target shooter speed (RPM) when using the right-trigger toggle. */
     public static final double SHOOTER_TARGET_SPEED_TOGGLE_RPM = INTAKE_TARGET_SPEED_INTAKE_RPM;
     /** Target shooter speed (RPM) for the main launch shot. */
-    public static final double SHOOTER_TARGET_SPEED_LAUNCH_RPM = 3300.0;
+    public static final double SHOOTER_TARGET_SPEED_LAUNCH_RPM = 2800.0;
     /** Target shooter speed (RPM) for a high-speed shot (A buttosn). */
     public static final double SHOOTER_TARGET_SPEED_HIGH_RPM = 3900.0;
     /** Target shooter speed (RPM) for an ultra-speed shot (long range). */
@@ -245,11 +276,19 @@ public final class Constants {
       public final int ioMotorId;
       public final int intakeMotorId;
       public final int loaderMotorId;
+      /** Empty string means RoboRIO CAN; otherwise Phoenix CAN bus name. */
+      public final String talonFxCanBus;
 
       public IoCanIdGroup(int ioMotorId, int intakeMotorId, int loaderMotorId) {
+        this(ioMotorId, intakeMotorId, loaderMotorId, IO_TALONFX_CAN_BUS);
+      }
+
+      public IoCanIdGroup(
+          int ioMotorId, int intakeMotorId, int loaderMotorId, String talonFxCanBus) {
         this.ioMotorId = ioMotorId;
         this.intakeMotorId = intakeMotorId;
         this.loaderMotorId = loaderMotorId;
+        this.talonFxCanBus = talonFxCanBus == null ? "" : talonFxCanBus.trim();
       }
     }
 
@@ -310,6 +349,11 @@ public final class Constants {
     public static final double TRIGGER_THRESHOLD = 0.5;
   }
 
+  private static String talonFxBusSuffix() {
+    String bus = IoConstants.IO_TALONFX_CAN_BUS == null ? "" : IoConstants.IO_TALONFX_CAN_BUS.trim();
+    return bus.isEmpty() ? " (roboRIO CAN)" : (" (CAN bus \"" + bus + "\")");
+  }
+
   /**
    * Returns a formatted list of all CAN IDs for logging or display.
    */
@@ -323,9 +367,9 @@ public final class Constants {
         "  Right follower: " + DriveConstants.RIGHT_FOLLOWER_ID,
         "",
         "IO / Loader:",
-        "  IO motor:     " + IoConstants.IO_MOTOR_ID,
-        "  Intake motor: " + IoConstants.INTAKE_MOTOR_ID,
-        "  Loader motor: " + IoConstants.LOADER_MOTOR_ID,
+        "  Flywheel (Kraken X60 / Talon FX): " + IoConstants.IO_MOTOR_ID + talonFxBusSuffix(),
+        "  Intake (Kraken X60 / Talon FX):  " + IoConstants.INTAKE_MOTOR_ID + talonFxBusSuffix(),
+        "  Loader (SPARK MAX):              " + IoConstants.LOADER_MOTOR_ID,
         "=============================");
   }
 }

@@ -258,16 +258,44 @@ public class CANDriveSubsystem extends SubsystemBase {
   }
 
   /**
-   * Small fast back-and-forth wiggle motion, used while the intake/shooter
-   * command is active. Runs until interrupted.
+   * One full wiggle: forward along X first, then reverse the same amount so net pose is
+   * approximately unchanged (symmetric timing and magnitude).
+   */
+  private Command commandIntakeWiggleOneCycle(double wiggleSpeed, double halfPeriodSeconds) {
+    Command first = this.run(() -> driveArcade(wiggleSpeed, 0)).withTimeout(halfPeriodSeconds);
+    Command second = this.run(() -> driveArcade(-wiggleSpeed, 0)).withTimeout(halfPeriodSeconds);
+    return Commands.sequence(first, second);
+  }
+
+  /**
+   * Small fast forward-then-reverse wiggle, used while the intake/shooter command
+   * is active. Each cycle returns to roughly the same pose. Runs until interrupted.
    *
    * @param wiggleSpeed       forward/backward speed [-1, 1], small magnitude
    * @param halfPeriodSeconds time for each half of the wiggle cycle
    */
   public Command commandIntakeWiggle(double wiggleSpeed, double halfPeriodSeconds) {
-    Command forward = this.run(() -> driveArcade(wiggleSpeed, 0)).withTimeout(halfPeriodSeconds);
-    Command backward = this.run(() -> driveArcade(-wiggleSpeed, 0)).withTimeout(halfPeriodSeconds);
-    return Commands.sequence(forward, backward)
+    return commandIntakeWiggleOneCycle(wiggleSpeed, halfPeriodSeconds)
+        .repeatedly()
+        .finallyDo(interrupted -> stop());
+  }
+
+  /**
+   * Wiggle used while shooting: continuous normal motion with one longer
+   * forward-then-reverse cycle (same speed, {@link frc.robot.Constants.DriveConstants#INTAKE_WIGGLE_HARD_SHAKE_HALF_PERIOD_MULTIPLIER}× half-period) every {@link frc.robot.Constants.DriveConstants#INTAKE_WIGGLE_HARD_SHAKE_INTERVAL_SECONDS}.
+   */
+  public Command commandIntakeWiggleWhileShooting() {
+    double half = INTAKE_WIGGLE_HALF_PERIOD_SECONDS;
+    double hardHalf = half * INTAKE_WIGGLE_HARD_SHAKE_HALF_PERIOD_MULTIPLIER;
+    double hardCycleSeconds = 2.0 * hardHalf;
+    double normalPhaseSeconds =
+        Math.max(0.0, INTAKE_WIGGLE_HARD_SHAKE_INTERVAL_SECONDS - hardCycleSeconds);
+    Command normalPhase =
+        Commands.deadline(
+            Commands.waitSeconds(normalPhaseSeconds),
+            commandIntakeWiggle(INTAKE_WIGGLE_SPEED, half));
+    Command hardOnce = commandIntakeWiggleOneCycle(INTAKE_WIGGLE_SPEED, hardHalf);
+    return Commands.sequence(normalPhase, hardOnce)
         .repeatedly()
         .finallyDo(interrupted -> stop());
   }

@@ -4,8 +4,13 @@
 
 package frc.robot.subsystems;
 
+import com.ctre.phoenix6.BaseStatusSignal;
+import com.ctre.phoenix6.CANBus;
+import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.NeutralModeValue;
+import com.ctre.phoenix6.sim.TalonFXSimState;
 import com.revrobotics.PersistMode;
-import com.revrobotics.RelativeEncoder;
 import com.revrobotics.ResetMode;
 import com.revrobotics.sim.SparkMaxSim;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
@@ -16,18 +21,21 @@ import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.system.plant.LinearSystemId;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.simulation.FlywheelSim;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.MatchReadiness;
 import frc.robot.logging.RobotTelemetryLog;
 import frc.robot.util.IoControlMath;
 import frc.robot.util.SparkMaxFaultReporter;
-import edu.wpi.first.wpilibj2.command.Commands;
-import edu.wpi.first.wpilibj2.command.SubsystemBase;
+
+import static edu.wpi.first.units.Units.RPM;
 
 import static frc.robot.Constants.IoConstants.*;
 
@@ -35,13 +43,15 @@ import frc.robot.Constants;
 import frc.robot.Constants.IoConstants.IoCanIdGroup;
 
 /**
- * Fuel system: Flywheel motor, intake, and loader (CAN IDs from
- * Constants.IoConstants), all
- * brushless SPARK MAX.
+ * Fuel system: flywheel and intake use Kraken X60 motors on Talon FX; loader
+ * remains a brushless SPARK MAX (CAN ID from {@link Constants.IoConstants}).
+ *
+ * <p>Phoenix "firmware / stale CAN" spam means no Talon was reached at the
+ * configured IDs and bus; fix wiring, IDs, v6 firmware, and device type before
+ * tuning software.
  */
 public class IoSubsystem extends SubsystemBase {
-  private final SparkMax flywheelMotor;
-  private final RelativeEncoder flywheelEncoder;
+  private final TalonFX flywheelMotor;
   /** When true, idle state or toggle modes keep shooter spinning. */
   private boolean shooterEnabled = false;
   /** Target shooter speed in RPM for encoder-based control. */
@@ -51,8 +61,7 @@ public class IoSubsystem extends SubsystemBase {
    * intake/launch).
    */
   private boolean spinUp50Requested = false;
-  private final SparkMax intakeMotor;
-  private final RelativeEncoder intakeEncoder;
+  private final TalonFX intakeMotor;
   /** Intake closed-loop enable/target (mirrors shooter control structure). */
   private boolean intakeEnabled = false;
   private double intakeTargetSpeedRpm = 0.0;
@@ -73,38 +82,39 @@ public class IoSubsystem extends SubsystemBase {
           INTAKE_VELOCITY_FF_VOLTS_PER_RPM,
           INTAKE_KA_VOLTS_PER_RPM_PER_S);
 
-  private final SparkMaxFaultReporter flywheelFaultReporter =
-      new SparkMaxFaultReporter("IO/Flywheel");
-  private final SparkMaxFaultReporter intakeFaultReporter =
-      new SparkMaxFaultReporter("IO/Intake");
+  private final StickyFaultTracker flywheelStickyFaults = new StickyFaultTracker();
+  private final StickyFaultTracker intakeStickyFaults = new StickyFaultTracker();
   private final SparkMaxFaultReporter loaderFaultReporter =
       new SparkMaxFaultReporter("IO/Loader");
 
-  private SparkMaxSim flywheelSim;
-  private SparkMaxSim intakeSim;
+  private TalonFXSimState flywheelSimState;
+  private TalonFXSimState intakeSimState;
   private SparkMaxSim loaderSim;
   private FlywheelSim shooterPlant;
   private FlywheelSim intakePlant;
   private FlywheelSim loaderPlant;
+
+  /**
+   * Updated once per {@link #periodic()} after a single CAN refresh, so we do not
+   * issue many rotor-velocity refreshes per tick (helps CAN utilization).
+   */
+  private double cachedFlywheelRpm;
+
+  private double cachedIntakeRpm;
 
   public IoSubsystem() {
     this(IO_CAN_IDS);
   }
 
   public IoSubsystem(IoCanIdGroup canIds) {
-    flywheelMotor = new SparkMax(canIds.ioMotorId, MotorType.kBrushless);
-    SparkMaxConfig flywheelConfig = new SparkMaxConfig();
-    flywheelConfig.smartCurrentLimit(FLYWHEEL_MOTOR_CURRENT_LIMIT);
-    flywheelConfig.voltageCompensation(12.0);
-    flywheelMotor.configure(flywheelConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    flywheelEncoder = flywheelMotor.getEncoder();
+    flywheelMotor = newTalonFx(canIds.ioMotorId, canIds.talonFxCanBus);
+    applyTalonFxIoDefaults(flywheelMotor, FLYWHEEL_MOTOR_CURRENT_LIMIT);
 
-    intakeMotor = new SparkMax(canIds.intakeMotorId, MotorType.kBrushless);
-    SparkMaxConfig intakeConfig = new SparkMaxConfig();
-    intakeConfig.smartCurrentLimit(INTAKE_MOTOR_CURRENT_LIMIT);
-    intakeConfig.voltageCompensation(12.0);
-    intakeMotor.configure(intakeConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    intakeEncoder = intakeMotor.getEncoder();
+    intakeMotor = newTalonFx(canIds.intakeMotorId, canIds.talonFxCanBus);
+    applyTalonFxIoDefaults(intakeMotor, INTAKE_MOTOR_CURRENT_LIMIT);
+
+    BaseStatusSignal.setUpdateFrequencyForAll(
+        50.0, flywheelMotor.getRotorVelocity(), intakeMotor.getRotorVelocity());
 
     loaderMotor = new SparkMax(canIds.loaderMotorId, MotorType.kBrushless);
     SparkMaxConfig loaderConfig = new SparkMaxConfig();
@@ -120,18 +130,21 @@ public class IoSubsystem extends SubsystemBase {
     SmartDashboard.putData("IO/Intake velocity PID", intakeVelocityPid);
 
     if (RobotBase.isSimulation()) {
-      flywheelSim = new SparkMaxSim(flywheelMotor, DCMotor.getNEO(1));
+      DCMotor kraken = DCMotor.getKrakenX60Foc(1);
+      flywheelSimState = flywheelMotor.getSimState();
+      flywheelSimState.setMotorType(TalonFXSimState.MotorType.KrakenX60);
       shooterPlant =
           new FlywheelSim(
               LinearSystemId.createFlywheelSystem(
-                  DCMotor.getNEO(1), Constants.SimulationConstants.SHOOTER_FLYWHEEL_J_KG_M2, 1.0),
-              DCMotor.getNEO(1));
-      intakeSim = new SparkMaxSim(intakeMotor, DCMotor.getNeo550(1));
+                  kraken, Constants.SimulationConstants.SHOOTER_FLYWHEEL_J_KG_M2, 1.0),
+              kraken);
+      intakeSimState = intakeMotor.getSimState();
+      intakeSimState.setMotorType(TalonFXSimState.MotorType.KrakenX60);
       intakePlant =
           new FlywheelSim(
               LinearSystemId.createFlywheelSystem(
-                  DCMotor.getNeo550(1), Constants.SimulationConstants.INTAKE_ROLLER_J_KG_M2, 1.0),
-              DCMotor.getNeo550(1));
+                  kraken, Constants.SimulationConstants.INTAKE_ROLLER_J_KG_M2, 1.0),
+              kraken);
       loaderSim = new SparkMaxSim(loaderMotor, DCMotor.getNeo550(1));
       loaderPlant =
           new FlywheelSim(
@@ -141,13 +154,34 @@ public class IoSubsystem extends SubsystemBase {
     }
   }
 
+  private static TalonFX newTalonFx(int deviceId, String canBus) {
+    if (canBus == null || canBus.isEmpty()) {
+      return new TalonFX(deviceId);
+    }
+    return new TalonFX(deviceId, new CANBus(canBus));
+  }
+
+  private static void applyTalonFxIoDefaults(TalonFX motor, int statorCurrentLimitAmps) {
+    TalonFXConfiguration cfg = new TalonFXConfiguration();
+    // If closed-loop RPM disagrees with mechanism direction vs. the Neo era, set
+    // cfg.MotorOutput.Inverted here (or in Tuner X) and retest.
+    cfg.MotorOutput.NeutralMode = NeutralModeValue.Coast;
+    cfg.CurrentLimits.StatorCurrentLimit = statorCurrentLimitAmps;
+    cfg.CurrentLimits.StatorCurrentLimitEnable = true;
+    motor.getConfigurator().apply(cfg);
+  }
+
   @Override
   public void periodic() {
+    BaseStatusSignal.refreshAll(flywheelMotor.getRotorVelocity(), intakeMotor.getRotorVelocity());
+    cachedFlywheelRpm = flywheelMotor.getRotorVelocity().getValue().in(RPM);
+    cachedIntakeRpm = intakeMotor.getRotorVelocity().getValue().in(RPM);
+
     updateShooterControl();
     updateIntakeControl();
 
-    flywheelFaultReporter.reportPeriodic(flywheelMotor);
-    intakeFaultReporter.reportPeriodic(intakeMotor);
+    reportTalonFxFaults(flywheelMotor, "IO/Flywheel", flywheelStickyFaults);
+    reportTalonFxFaults(intakeMotor, "IO/Intake", intakeStickyFaults);
     loaderFaultReporter.reportPeriodic(loaderMotor);
 
     SmartDashboard.putNumber("IO/Shooter RPM", getShooterSpeedRpm());
@@ -171,24 +205,25 @@ public class IoSubsystem extends SubsystemBase {
   }
 
   /**
-   * Desktop simulation: advance WPILib {@link FlywheelSim} plants and REV
-   * {@link SparkMaxSim} so encoder RPMs react to voltage commands. No-op on the
-   * roboRIO.
+   * Desktop simulation: advance WPILib {@link FlywheelSim} plants and device sim
+   * state so encoder RPMs react to voltage commands. No-op on the roboRIO.
    */
   public void simulationPeriodic() {
-    if (flywheelSim == null) {
+    if (flywheelSimState == null) {
       return;
     }
     double dt = TimedRobot.kDefaultPeriod;
     double vbus = RobotController.getBatteryVoltage();
 
-    shooterPlant.setInputVoltage(flywheelMotor.getAppliedOutput() * vbus);
+    flywheelSimState.setSupplyVoltage(vbus);
+    shooterPlant.setInputVoltage(flywheelSimState.getMotorVoltage());
     shooterPlant.update(dt);
-    flywheelSim.iterate(shooterPlant.getAngularVelocityRPM(), vbus, dt);
+    flywheelSimState.setRotorVelocity(shooterPlant.getAngularVelocityRPM() / 60.0);
 
-    intakePlant.setInputVoltage(intakeMotor.getAppliedOutput() * vbus);
+    intakeSimState.setSupplyVoltage(vbus);
+    intakePlant.setInputVoltage(intakeSimState.getMotorVoltage());
     intakePlant.update(dt);
-    intakeSim.iterate(intakePlant.getAngularVelocityRPM(), vbus, dt);
+    intakeSimState.setRotorVelocity(intakePlant.getAngularVelocityRPM() / 60.0);
 
     loaderPlant.setInputVoltage(loaderMotor.getAppliedOutput() * vbus);
     loaderPlant.update(dt);
@@ -204,12 +239,12 @@ public class IoSubsystem extends SubsystemBase {
 
   /** Returns the current shooter (flywheel motor) speed in RPM. */
   public double getShooterSpeedRpm() {
-    return flywheelEncoder.getVelocity();
+    return cachedFlywheelRpm;
   }
 
   /** Returns the current intake motor speed in RPM. */
   public double getIntakeSpeedRpm() {
-    return intakeEncoder.getVelocity();
+    return cachedIntakeRpm;
   }
 
   /** Enables the shooter at the given target speed (RPM). */
@@ -569,5 +604,40 @@ public class IoSubsystem extends SubsystemBase {
           loaderMotor.set(0.0);
           disableIntake();
         });
+  }
+
+  private static final class StickyFaultTracker {
+    int lastStickyRawBits = -1;
+  }
+
+  private static void reportTalonFxFaults(
+      TalonFX motor, String dashboardKeyPrefix, StickyFaultTracker tracker) {
+    motor.getFaultField().refresh();
+    motor.getStickyFaultField().refresh();
+    int active = motor.getFaultField().getValue();
+    int sticky = motor.getStickyFaultField().getValue();
+
+    SmartDashboard.putNumber(dashboardKeyPrefix + "/fault raw", active);
+    SmartDashboard.putString(dashboardKeyPrefix + "/faults", formatTalonFxFaultHex(active));
+    SmartDashboard.putNumber(dashboardKeyPrefix + "/sticky fault raw", sticky);
+    SmartDashboard.putString(dashboardKeyPrefix + "/sticky faults", formatTalonFxFaultHex(sticky));
+    SmartDashboard.putBoolean(dashboardKeyPrefix + "/has active fault", active != 0);
+    SmartDashboard.putBoolean(dashboardKeyPrefix + "/has sticky fault", sticky != 0);
+
+    if (sticky != tracker.lastStickyRawBits) {
+      if (sticky != 0) {
+        DriverStation.reportWarning(
+            "["
+                + dashboardKeyPrefix
+                + "] Sticky Talon FX fault(s), raw 0x"
+                + Integer.toHexString(sticky),
+            false);
+      }
+      tracker.lastStickyRawBits = sticky;
+    }
+  }
+
+  private static String formatTalonFxFaultHex(int raw) {
+    return raw == 0 ? "none" : ("0x" + Integer.toHexString(raw));
   }
 }

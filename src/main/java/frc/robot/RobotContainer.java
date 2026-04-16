@@ -17,7 +17,6 @@ import frc.robot.subsystems.CANDriveSubsystem;
 import frc.robot.subsystems.IoSubsystem;
 import java.util.Optional;
 import java.util.OptionalInt;
-import static frc.robot.Constants.DriveConstants.*;
 import static frc.robot.Constants.IoConstants.SHOOTER_TARGET_SPEED_HIGH_RPM;
 import static frc.robot.Constants.IoConstants.SHOOTER_TARGET_SPEED_ULTRA_RPM;
 import static frc.robot.Constants.OperatorConstants.*;
@@ -85,7 +84,7 @@ public class RobotContainer {
    */
   private Command createShootingSequence(Command launchCommand) {
     return Commands.parallel(
-        launchCommand, driveSubsystem.commandIntakeWiggle(INTAKE_WIGGLE_SPEED, 0.10));
+        launchCommand, driveSubsystem.commandIntakeWiggleWhileShooting());
   }
 
   /**
@@ -97,7 +96,7 @@ public class RobotContainer {
         ioSubsystem.commandLaunchSpinUpPhase(shooterRpm),
         Commands.parallel(
             ioSubsystem.commandLaunchSustainPhase(shooterRpm),
-            driveSubsystem.commandIntakeWiggle(INTAKE_WIGGLE_SPEED, 0.10)));
+            driveSubsystem.commandIntakeWiggleWhileShooting()));
   }
 
   private void configureBindings() {
